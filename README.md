@@ -1,4 +1,4 @@
-# List secret scanning alerts
+# GHAS API scripts
 
 ## Requirements
 
@@ -25,6 +25,50 @@ options:
                         State of the alerts to query
   --no-include-secret, -n
                         Do not include the secret in the output
+  --since SINCE, -S SINCE
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+  --json                Output in JSON format (otherwise CSV)
+  --quote-all, -q       Quote all fields in CSV output
+  --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --debug, -d           Enable debug logging
+```
+
+```text
+usage: list_code_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+
+List code scanning alerts for a GitHub repository, organization or Enterprise.
+
+positional arguments:
+  name                  Name of the repo/org/Enterprise to query
+
+options:
+  -h, --help            show this help message and exit
+  --scope {ent,org,repo}
+                        Scope of the query
+  --state {open,resolved}, -s {open,resolved}
+                        State of the alerts to query
+  --since SINCE, -S SINCE
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+  --json                Output in JSON format (otherwise CSV)
+  --quote-all, -q       Quote all fields in CSV output
+  --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --debug, -d           Enable debug logging
+```
+
+```text
+usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+
+Replay code scanning alert status for a GitHub repository, organization or Enterprise, based on a provide file of previous statuses.
+
+positional arguments:
+  name                  Name of the repo/org/Enterprise to query
+
+options:
+  -h, --help            show this help message and exit
+  --scope {ent,org,repo}
+                        Scope of the query
+  --state {open,resolved}, -s {open,resolved}
+                        State of the alerts to query
   --since SINCE, -S SINCE
                         Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
