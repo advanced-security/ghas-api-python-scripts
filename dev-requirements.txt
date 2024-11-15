@@ -1,0 +1,2 @@
+types-requests==2.32.0.20240914
+types-tqdm==4.66.0.20240417

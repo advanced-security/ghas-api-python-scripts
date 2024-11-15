@@ -1,0 +1,2 @@
+tqdm==4.66.5
+defusedcsv==2.0.0
