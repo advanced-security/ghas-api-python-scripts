@@ -93,13 +93,28 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
         writer.writerow(to_list(result))
 
 
-def list_secret_scanning_alerts(name, scope: str, state:str, since: datetime.datetime, hostname: str, include_secret: bool, bypassed: bool) -> Generator[dict, None, None]:
+def list_secret_scanning_alerts(
+    name,
+    scope: str,
+    hostname: str,
+    state: str | None = None,
+    since: datetime.datetime | None = None,
+    include_secret: bool = False,
+    bypassed: bool = False,
+    raw: bool = False,
+) -> Generator[dict, None, None]:
     g = GitHub(hostname=hostname)
-    alerts = g.list_secret_scanning_alerts(name, state=state, since=since, scope=scope, bypassed=bypassed)
-
-    results = (make_result(alert, scope, name, include_secret=include_secret) for alert in alerts)
-
-    return results
+    alerts = g.list_secret_scanning_alerts(
+        name, state=state, since=since, scope=scope, bypassed=bypassed
+    )
+    if raw:
+        return alerts
+    else:
+        results = (
+            make_result(alert, scope, name, include_secret=include_secret)
+            for alert in alerts
+        )
+        return results
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -183,13 +198,19 @@ def main() -> None:
         raise ValueError("Invalid name: %s for %s", name, scope)
 
     results = list_secret_scanning_alerts(
-        name, scope, state, since, hostname, include_secret, bypassed
+        name,
+        scope,
+        hostname,
+        state=state,
+        since=since,
+        include_secret=include_secret,
+        bypassed=bypassed,
     )
 
     if args.json:
         print(json.dumps(results, indent=2))
     else:
-        output_csv(results, args.quote_all) # type: ignore
+        output_csv(results, args.quote_all)  # type: ignore
 
 
 if __name__ == "__main__":

@@ -100,13 +100,14 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
         writer.writerow(to_list(result))
 
 
-def list_code_scanning_alerts(name: str, scope: str, state: str, since: datetime.datetime|None, hostname: str) -> Generator[dict, None, None]:
+def list_code_scanning_alerts(name: str, scope: str, hostname: str, state: str|None=None, since: datetime.datetime|None=None, raw: bool=False) -> Generator[dict, None, None]:
     g = GitHub(hostname=hostname)
     alerts = g.list_code_scanning_alerts(name, state=state, since=since, scope=scope)
-
-    results = (make_result(alert, scope, name) for alert in alerts)
-
-    return results
+    if raw:
+        return alerts
+    else:
+        results = (make_result(alert, scope, name) for alert in alerts)
+        return results
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -175,7 +176,7 @@ def main() -> None:
     if not GitHub.check_name(name, scope):
         raise ValueError("Invalid name: %s for %s", name, scope)
 
-    results = list_code_scanning_alerts(name, scope, state, since, hostname)
+    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since)
 
     if args.json:
         print(json.dumps(results, indent=2))

@@ -34,9 +34,17 @@ def existing_results_by_location(reader: csv.DictReader) -> dict:
         start_loc = (start_line, start_column)
         end_loc = (end_line, end_column)
 
-        existing_results[repo] = {} if repo not in existing_results else existing_results[repo]
-        existing_results[repo][path] = {} if path not in existing_results[repo] else existing_results[repo][path]
-        existing_results[repo][path][start_loc] = {} if start_loc not in existing_results[repo][path] else existing_results[repo][path][start_loc]
+        existing_results[repo] = (
+            {} if repo not in existing_results else existing_results[repo]
+        )
+        existing_results[repo][path] = (
+            {} if path not in existing_results[repo] else existing_results[repo][path]
+        )
+        existing_results[repo][path][start_loc] = (
+            {}
+            if start_loc not in existing_results[repo][path]
+            else existing_results[repo][path][start_loc]
+        )
         existing_results[repo][path][start_loc][end_loc] = result
 
     return existing_results
@@ -46,17 +54,25 @@ def change_state(hostname, result: dict, res: dict) -> None:
     """Change the state of the alert to match the existing result using the GitHub API to update the alert."""
     g = GitHub(hostname=hostname)
 
+    repo_name = result["repo"]
+
     state_update = {
         "state": res["state"],
         "dismissed_reason": res["dismissed_reason"],
-        "dismissed_comment": res["dismissed_comment"]
+        "dismissed_comment": res["dismissed_comment"],
     }
 
     alert_number = result["url"].split("/")[-1]
 
-    LOG.debug(f"Changing state of alert {alert_number} to {state_update}")
+    LOG.debug(f"Changing state of alert {repo_name}/{alert_number} to {state_update}")
 
-    next(g.query("repo", result["repo"], f"/code-scanning/alerts/{alert_number}", data=state_update, method="PATCH"))
+    g.query_once(
+        "repo",
+        repo_name,
+        f"/code-scanning/alerts/{alert_number}",
+        data=state_update,
+        method="PATCH",
+    )
 
     return
 
@@ -136,13 +152,7 @@ def main() -> None:
 
     LOG.debug(existing_results)
 
-    results = list_code_scanning_alerts(
-        name,
-        scope,
-        state,
-        since,
-        hostname
-    )
+    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since)
 
     for result in results:
         repo = result["repo"]

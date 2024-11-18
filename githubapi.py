@@ -29,12 +29,14 @@ VALID_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,39}$")
 
 class RateLimited(Exception):
     """Rate limited exception."""
+
     pass
 
 
 class GitHub:
     """A GitHub API client."""
-    def __init__(self, token: str|None=None, hostname="github.com") -> None:
+
+    def __init__(self, token: str | None = None, hostname="github.com") -> None:
         token = token if token is not None else os.getenv("GITHUB_TOKEN")
         if token is None:
             raise ValueError("GITHUB_TOKEN environment variable must be set")
@@ -52,7 +54,7 @@ class GitHub:
         self.hostname = hostname
 
     @classmethod
-    def check_name(self, name: str, scope:str) -> bool:
+    def check_name(self, name: str, scope: str) -> bool:
         """Check the name is valid."""
         # check repo slug has <owner</<repo> format or org/Enterprise name is valid
         if scope == "repo":
@@ -86,7 +88,18 @@ class GitHub:
             links[rel] = url
         return links
 
-    def query(self, scope: str, name: str, endpoint: str, query: dict|None=None, data: dict|None=None, method: str="GET", since: datetime.datetime|None=None, date_field:str="created_at", paging: None|str="cursor") -> Generator[dict, None, None]:
+    def query(
+        self,
+        scope: str,
+        name: str,
+        endpoint: str,
+        query: dict | None = None,
+        data: dict | None = None,
+        method: str = "GET",
+        since: datetime.datetime | None = None,
+        date_field: str = "created_at",
+        paging: None | str = "cursor",
+    ) -> Generator[dict, None, None]:
         """Query the GitHub API."""
         LOG.info(method)
 
@@ -94,20 +107,46 @@ class GitHub:
             paging = None
 
         url = self.construct_api_url(scope, name, endpoint, query, paging)
-        
+
         if paging is None:
             try:
-                result = self.do(url, method, data=data)
+                result = self._do(url, method, data=data)
                 yield result
             except Exception as e:
                 LOG.error("Error: %s", e)
                 # show traceback without raising the exception
                 LOG.debug("".join(traceback.format_exception(e)))
         else:
-            for result in self.paginate(url, since, date_field=date_field, cursor=paging == "cursor"):
+            for result in self.paginate(
+                url, since, date_field=date_field, cursor=paging == "cursor"
+            ):
                 yield result
 
-    def construct_api_url(self, scope: str, name: str, endpoint: str, query: dict|None, paging: None|str) -> str:
+    def query_once(
+        self,
+        scope: str,
+        name: str,
+        endpoint: str,
+        query: dict | None = None,
+        data: dict | None = None,
+        method: str = "GET",
+    ) -> dict | None:
+        """Query the GitHub API once, with no paging."""
+        results = self.query(scope, name, endpoint, query, data, method)
+        try:
+            result = next(results)
+        except StopIteration:
+            result = None
+        return result
+
+    def construct_api_url(
+        self,
+        scope: str,
+        name: str,
+        endpoint: str,
+        query: dict | None,
+        paging: None | str,
+    ) -> str:
         """Construct the URL to query."""
         api_path = "/api/v3" if self.hostname != "github.com" else ""
 
@@ -124,10 +163,7 @@ class GitHub:
         if paging is None:
             query_params = {}
         elif paging == "cursor":
-            query_params = {
-                "per_page": 100,
-                "before": ""
-            }
+            query_params = {"per_page": 100, "before": ""}
         elif paging == "page":
             query_params = {
                 "per_page": 100,
@@ -139,22 +175,31 @@ class GitHub:
 
         url = urlunparse(
             (
-                'https',
+                "https",
                 "api.github.com" if self.hostname == "github.com" else self.hostname,
                 path,
                 None,
                 urlencode(query_params),
-                None
+                None,
             )
         )
 
         return url
 
-    def get(self, url: str, query: dict|None=None, rate_limit: bool=True) -> requests.Response:
+    def _get(
+        self, url: str, query: dict | None = None, rate_limit: bool = True
+    ) -> requests.Response:
         """Do a single GET request, handle errors and rate limiting."""
-        return self.do(url, "GET", query, rate_limit=rate_limit)
+        return self._do(url, "GET", query, rate_limit=rate_limit)
 
-    def do(self, url, method="GET", query: dict|None=None, data: dict|None=None, rate_limit: bool=True) -> requests.Response:
+    def _do(
+        self,
+        url,
+        method="GET",
+        query: dict | None = None,
+        data: dict | None = None,
+        rate_limit: bool = True,
+    ) -> requests.Response:
         """Do a single request, handle errors and rate limiting."""
         if query is not None:
             parsed = urlparse(url)
@@ -172,7 +217,9 @@ class GitHub:
             )
 
         try:
-            request = requests.Request(method, url, headers=self.session.headers, json=data)
+            request = requests.Request(
+                method, url, headers=self.session.headers, json=data
+            )
             LOG.debug(request)
             response = self.session.send(request.prepare())
         except requests.ConnectionError as err:
@@ -191,7 +238,9 @@ class GitHub:
         return response
 
     @staticmethod
-    def _handle_rate_limit(response: requests.Response, apply_rate_limit: bool=True) -> bool:
+    def _handle_rate_limit(
+        response: requests.Response, apply_rate_limit: bool = True
+    ) -> bool:
         rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
         rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", 0))
 
@@ -206,9 +255,7 @@ class GitHub:
                         datetime.datetime.utcnow().timestamp()
                     )
                     if sleep_time > 0:
-                        LOG.debug(
-                            f"Rate limit hit, sleeping for {sleep_time} seconds"
-                        )
+                        LOG.debug(f"Rate limit hit, sleeping for {sleep_time} seconds")
                         if apply_rate_limit:
                             time.sleep(sleep_time)
                             return True
@@ -224,12 +271,21 @@ class GitHub:
 
         return False
 
-    def paginate(self, url: str, since: datetime.datetime|None=None, date_field=str|None, progress: bool=True, cursor: bool=False) -> Generator[dict, None, None]:
+    def paginate(
+        self,
+        url: str,
+        since: datetime.datetime | None = None,
+        date_field: str | None = None,
+        progress: bool = True,
+        cursor: bool = False,
+    ) -> Generator[dict, None, None]:
         """Paginate the results of a GitHub API query."""
 
         if not cursor:
-            raise NotImplementedError("Only cursor-based pagination is supported currently")
-        
+            raise NotImplementedError(
+                "Only cursor-based pagination is supported currently"
+            )
+
         if progress:
             pbar = tqdm(desc="GitHub API", unit=" requests")
             pbar.reset(total=None)
@@ -237,7 +293,7 @@ class GitHub:
         while True:
             try:
                 try:
-                    response = self.get(url)
+                    response = self._get(url)
                 except RateLimited:
                     continue
                 except (requests.exceptions.HTTPError, requests.ConnectionError) as e:
@@ -268,7 +324,9 @@ class GitHub:
                         [
                             item
                             for item in data
-                            if date_field not in item or datetime.datetime.fromisoformat(item.get(date_field)) >= since
+                            if date_field not in item
+                            or datetime.datetime.fromisoformat(item.get(date_field))
+                            >= since
                         ]
                     )
                     if results_in_date_range == 0:
@@ -300,14 +358,27 @@ class GitHub:
                 break
 
     def list_code_scanning_alerts(
-        self, name: str, state: str|None = None, since: datetime.datetime|None = None, scope: str = "org"
+        self,
+        name: str,
+        state: str | None = None,
+        since: datetime.datetime | None = None,
+        scope: str = "org",
     ) -> Generator[dict, None, None]:
         """List code scanning alerts for a GitHub repository, organization or Enterprise."""
         query = {"state": state} if state is not None else {}
-        alerts = self.query(scope, name, "/code-scanning/alerts", query, since=since, date_field="created_at", paging="cursor")
+        alerts = self.query(
+            scope,
+            name,
+            "/code-scanning/alerts",
+            query,
+            since=since,
+            date_field="created_at",
+            paging="cursor",
+        )
 
         results = (
-            alert for alert in alerts
+            alert
+            for alert in alerts
             if (
                 since is None
                 or datetime.datetime.fromisoformat(alert["created_at"]) >= since
@@ -315,18 +386,32 @@ class GitHub:
         )
 
         return results
-        
+
     def list_secret_scanning_alerts(
-        self, name: str, state: str|None = None, since: datetime.datetime|None = None, scope: str = "org", bypassed: bool = False
+        self,
+        name: str,
+        state: str | None = None,
+        since: datetime.datetime | None = None,
+        scope: str = "org",
+        bypassed: bool = False,
     ) -> Generator[dict, None, None]:
         """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
         query = {"state": state} if state is not None else {}
-        alerts = self.query(scope, name, "/secret-scanning/alerts", query, since=since, date_field="created_at", paging="cursor")
+        alerts = self.query(
+            scope,
+            name,
+            "/secret-scanning/alerts",
+            query,
+            since=since,
+            date_field="created_at",
+            paging="cursor",
+        )
 
         results = (
-            alert for alert in alerts
-            if (alert["push_protection_bypassed"] if bypassed else True) and
-            (
+            alert
+            for alert in alerts
+            if (alert["push_protection_bypassed"] if bypassed else True)
+            and (
                 since is None
                 or datetime.datetime.fromisoformat(alert["created_at"]) >= since
             )
