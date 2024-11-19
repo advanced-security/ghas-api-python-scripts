@@ -101,7 +101,7 @@ class GitHub:
         paging: None | str = "cursor",
     ) -> Generator[dict, None, None]:
         """Query the GitHub API."""
-        LOG.info(method)
+        LOG.debug(method)
 
         if method != "GET":
             paging = None

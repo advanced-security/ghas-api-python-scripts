@@ -142,6 +142,9 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         "--json", action="store_true", help="Output in JSON format (otherwise CSV)"
     )
     parser.add_argument(
+        "--raw", "-r", action="store_true", help="Output raw JSON data from the API"
+    )
+    parser.add_argument(
         "--quote-all", "-q", action="store_true", help="Quote all fields in CSV output"
     )
     parser.add_argument(
@@ -168,6 +171,9 @@ def main() -> None:
 
     LOG.debug("Since: %s (%s) [%s]", since, args.since, type(since))
 
+    if args.raw:
+        args.json = True
+
     scope = "repo" if ("/" in args.name and args.scope != "repo") else args.scope
     name = args.name
     state = args.state
@@ -176,10 +182,10 @@ def main() -> None:
     if not GitHub.check_name(name, scope):
         raise ValueError("Invalid name: %s for %s", name, scope)
 
-    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since)
+    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since, raw=args.raw)
 
     if args.json:
-        print(json.dumps(results, indent=2))
+        print(json.dumps(list(results), indent=2))
     else:
         output_csv(results, args.quote_all) # type: ignore
 
