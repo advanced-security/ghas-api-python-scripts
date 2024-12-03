@@ -1,5 +1,6 @@
 *.csv
 *.json
+*.html
 __pycache__/
 .mypy_cache/
 *.pyc
