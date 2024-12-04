@@ -38,6 +38,7 @@ def make_result(
         "rule_help": alert["rule"]["help"],
         "tool_name": alert["tool"]["name"],
         "commit_sha": alert["most_recent_instance"]["commit_sha"],
+        "message": alert["most_recent_instance"]["message"]["text"],
         "ref": alert["most_recent_instance"]["ref"],
         "path": alert["most_recent_instance"]["location"]["path"],
         "start_line": alert["most_recent_instance"]["location"]["start_line"],

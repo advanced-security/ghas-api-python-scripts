@@ -16,6 +16,8 @@ from html import escape
 import re
 from typing import Any
 from mistletoe import markdown
+import humanize
+from datetime import datetime
 
 
 LOG = logging.getLogger(__name__)
@@ -187,7 +189,7 @@ def format_value(key: str, value: float|str, data: dict[str, Any]) -> str:
         ref = str(value)[len("refs/heads/"):] if str(value).startswith("refs/heads/") else str(value)
         return '<span class="badge bg-primary rounded-pill" title="{}">{}</span>'.format(escape(data.get("commit_sha", "-")), escape(ref))
     elif key == "rule_id":
-        return '<span style="font-size: small;">{}</span>'.format(escape(str(value)))
+        return '<span style="font-size: small;" title="{}">{}</span>'.format(escape(data["rule_description"] if "rule_description" in data else str(value), quote=True), escape(str(value)))
     elif key == "rule_help":
         if value == "":
             return "-"
@@ -198,13 +200,16 @@ def format_value(key: str, value: float|str, data: dict[str, Any]) -> str:
         )
     elif key == "url":
         return '<a href="{}"><i class="fa-solid fa-link code-scanning-url"></i></a>'.format(escape(str(value), quote=True))
+    elif key == "created_at":
+        natural_date = humanize.naturaltime(datetime.fromisoformat(str(value)))
+        return '<span style="display:none">{}</span><span title="{}">{}</span>'.format(escape(str(value)), escape(str(value)), escape(natural_date))
     else:
         return escape(str(value))
 
 
 def html_output(alerts: list, stylesheet_path: str|None=None) -> str:
     """Generate a simple HTML representation of the alerts, in a table. Use HTML escaping."""
-    fields = ["created_at", "url", "repo", "language", "ref", "path", "location", "state", "rule_id", "tool_name", "cwe", "rule_description", "rule_severity", "security-severity", "precision", "rule_help"]
+    fields = ["created_at", "url", "repo", "language", "ref", "path", "location", "state", "rule_id", "tool_name", "cwe", "message", "rule_severity", "security-severity", "precision", "rule_help"]
 
     heading = format_headings(fields)
 
@@ -263,6 +268,8 @@ $(document).ready(function() {
 </style>
 """
 
+    generated_at = '<br /><p style="font-size: small">Generated at {}Z</p>'.format(datetime.utcnow().isoformat(timespec="seconds"))
+
     html = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -276,8 +283,9 @@ $(document).ready(function() {
 {}
 {}
 {}
+{}
 </body>
-</html>""".format(stylesheets, scripts, hide_print_style, jquery_document_ready, table)
+</html>""".format(stylesheets, scripts, hide_print_style, jquery_document_ready, table, generated_at)
 
     return html
 
