@@ -14,6 +14,8 @@ import argparse
 import logging
 from html import escape
 import re
+from typing import Any
+from mistletoe import markdown
 
 
 LOG = logging.getLogger(__name__)
@@ -72,6 +74,16 @@ def fixup_rule_metadata_parse_ql(rule_metadata: dict) -> None:
         del rule_metadata["filename"]
 
 
+def fixup_alerts(alerts: list[dict]) -> None:
+    """Add a formatted code location."""
+    for alert in alerts:
+        if alert["start_line"] == alert["end_line"]:
+            location = "{}:{}-{}".format(alert["start_line"], alert["start_column"], alert["end_column"])
+        else:
+            location = "{}:{}-{}:{}".format(alert["start_line"], alert["start_column"], alert["end_line"], alert["end_column"])
+        alert["location"] = location
+
+
 def enrich_alerts(alerts: list, metadata: dict) -> None:
     """Enrich the alerts with the rule metadata."""
     for alert in alerts:
@@ -111,7 +123,7 @@ def format_row(alert: dict, keys: list) -> str:
         if value is None:
             value = "-"
         cells.append("<td>{}</td>".format(
-            format_value(key, value)
+            format_value(key, value, alert)
         ))
     return "<tr>{}</tr>".format("".join(cells))
 
@@ -122,7 +134,7 @@ FA_TITLES = {
 }
 
 
-def format_value(key: str, value: float|str) -> str:
+def format_value(key: str, value: float|str, data: dict[str, Any]) -> str:
     """Format a value for a cell in the table, depending on the key."""
     if value == "-":
         return str(value)
@@ -165,23 +177,34 @@ def format_value(key: str, value: float|str) -> str:
     elif key == "language":
         if value in ["python", "javascript", "java", "go", "swift"]:
             fa_title = FA_TITLES.get(str(value), value)
-            return '<i class="fab fa-{}" title="{}"></i>'.format(escape(str(fa_title), quote=True), escape(str(value)))
+            return '<i class="fab fa-{}" title="{}"></i><span style="display:none;">{}</span>'.format(escape(str(fa_title), quote=True), escape(str(value)), escape(str(value)))
         return '<span class="badge bg-primary rounded-pill">{}</span>'.format(
             escape(str(value))
         )
     elif key == "ref":
         # strip off 'refs/heads/' prefix, if there
-        ref = escape(str(value)[len("refs/heads/"):] if str(value).startswith("refs/heads/") else str(value))
-        return '<span class="badge bg-primary rounded-pill">{}</span>'.format(ref)
+        # add the exact commit as a tooltip
+        ref = str(value)[len("refs/heads/"):] if str(value).startswith("refs/heads/") else str(value)
+        return '<span class="badge bg-primary rounded-pill" title="{}">{}</span>'.format(escape(data.get("commit_sha", "-")), escape(ref))
     elif key == "rule_id":
         return '<span style="font-size: small;">{}</span>'.format(escape(str(value)))
+    elif key == "rule_help":
+        if value == "":
+            return "-"
+        # turn Markdown into HTML, inline under a details element
+        return '<details class="rule-help"><summary>Details</summary>{}</details>'.format(
+            # markdown to HTML with a library
+            markdown(value)
+        )
+    elif key == "url":
+        return '<a href="{}"><i class="fa-solid fa-link code-scanning-url"></i></a>'.format(escape(str(value), quote=True))
     else:
         return escape(str(value))
 
 
 def html_output(alerts: list, stylesheet_path: str|None=None) -> str:
     """Generate a simple HTML representation of the alerts, in a table. Use HTML escaping."""
-    fields = ["created_at", "repo", "language", "ref", "path", "state", "rule_id", "tool_name", "cwe", "rule_description", "rule_severity", "security-severity", "precision"]
+    fields = ["created_at", "url", "repo", "language", "ref", "path", "location", "state", "rule_id", "tool_name", "cwe", "rule_description", "rule_severity", "security-severity", "precision", "rule_help"]
 
     heading = format_headings(fields)
 
@@ -208,7 +231,8 @@ def html_output(alerts: list, stylesheet_path: str|None=None) -> str:
     jquery_document_ready = """
 <script type="text/javascript">
 $(document).ready(function() {
-    $('#alerts').DataTable({
+    // DataTable
+    let table = $('#alerts').DataTable({
       language: {
         //customize pagination prev and next buttons: use arrows instead of words
         'paginate': {
@@ -224,9 +248,19 @@ $(document).ready(function() {
         '<option value="-1">All</option>'+
         '</select> results'
       }
-    })  
+    });
 } );
 </script>
+"""
+
+    hide_print_style = """
+<style>
+@media print {
+  .dataTables_filter, .dataTables_length, .dataTables_paginate, .code-scanning-url, .rule-help {
+    display: none;
+  }
+}
+</style>
 """
 
     html = """<!DOCTYPE html>
@@ -241,8 +275,9 @@ $(document).ready(function() {
 {}
 {}
 {}
+{}
 </body>
-</html>""".format(stylesheets, scripts, jquery_document_ready, table)
+</html>""".format(stylesheets, scripts, hide_print_style, jquery_document_ready, table)
 
     return html
 
@@ -295,6 +330,7 @@ def main() -> None:
     alerts = json.load(args.alerts)
     metadata = json.load(args.metadata)
 
+    fixup_alerts(alerts)
     fix_all_metadata(metadata, args.metadata_format)
     enrich_alerts(alerts, metadata)
 
