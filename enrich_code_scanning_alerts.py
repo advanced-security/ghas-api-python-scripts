@@ -522,7 +522,7 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         "--metadata-format",
         "-m",
         choices=["codeql", "parse_ql"],
-        default="codeql",
+        default="parse_ql",
         help="Format of the metadata",
     )
     parser.add_argument(
