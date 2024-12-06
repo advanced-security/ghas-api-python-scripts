@@ -8,6 +8,8 @@
 
 ## Usage
 
+The date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
+
 ```text
 usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--bypassed] [--state {open,resolved}] [--no-include-secret] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
 
@@ -77,7 +79,31 @@ options:
   --debug, -d           Enable debug logging
 ```
 
-The date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
+```text
+usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
+
+Add CodeQL metadata to Code Scanning alerts and produce output. This must be the abbreviated version of the JSON output supported by the partner script `list_code_scanning_alerts.py`. The metadata can either be in the format provided by the `codeql resolve metadata` command, or in the format produced by the
+script `parse_ql` by the same author as this script.
+
+positional arguments:
+  alerts                JSON file containing the alerts to enrich
+  metadata              JSON file containing the metadata to add to the alerts, which must be indexed by the rule ID
+  scope                 Target of the report - e.g. the org, repo or Enterprise name being scanned
+
+options:
+  -h, --help            show this help message and exit
+  --mitre-cwe-csv MITRE_CWE_CSV
+                        CSV file containing MITRE CWE data for Software Development from https://cwe.mitre.org/data/csv/699.csv.zip
+  --metadata-format {codeql,parse_ql}, -m {codeql,parse_ql}
+                        Format of the metadata
+  --debug, -d           Print debug information
+  --format {json,html}, -f {json,html}
+                        Output format
+  --fields FIELDS, -F FIELDS
+                        Comma-separated list of fields to include in the output
+  --groupby GROUPBY, -g GROUPBY
+                        Field to group the alerts by
+```
 
 ## License
 
