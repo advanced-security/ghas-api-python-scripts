@@ -299,9 +299,9 @@ def make_summary(alerts: list[dict], scope: str, cwe_counts: dict[str, int], cwe
 
     severity = '<div style="width:33%; float:left; "><table class="table"><tr><td style="width:50%; background-color: #FFDDDD;">CRITICAL<br />{}</td><td style="width:50%; background-color: #FFEEDD;">HIGH<br />{}</td></tr><tr><td style="width:50%; background-color: #FFFFDD;">MEDIUM<br />{}</td><td style="width:50%; background-color: #DDDDDD;">LOW<br />{}</td></tr></table></div>'.format(
         len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_CRITICAL]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_HIGH]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_MEDIUM]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] < CVSS_MEDIUM or a["security-severity"] is None]) 
+        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_HIGH and a["security-severity"] < CVSS_CRITICAL]),
+        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_MEDIUM and a["security-severity"] < CVSS_HIGH]),
+        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] < CVSS_MEDIUM or a["security-severity"] is None])
     )
 
     cwe_summary = '<div style="width:33%; float:left; "><strong>Top 5 CWEs</strong>:<ol>'
