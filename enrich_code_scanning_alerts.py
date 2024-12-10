@@ -14,9 +14,11 @@ import logging
 from html import escape
 import re
 from typing import Any
+from pathlib import Path
+from datetime import datetime
+import time
 from mistletoe import markdown
 import humanize
-from datetime import datetime
 from defusedcsv import csv
 
 
@@ -135,26 +137,32 @@ def format_header(key: str) -> str:
     return output
 
 
-def format_headings(keys: list[str]) -> str:
+def format_headings(keys: list[str], noprint_keys: list[str]|None = None) -> str:
     """Format the headings of the table."""
     cells = []
     for key in keys:
         cells.append(
-            "<th>{}</th>".format(
-                escape(format_header(key))
+            "<th{}>{}</th>".format(
+                ' class="no-print"' if noprint_keys is not None and key in noprint_keys else "",
+                escape(format_header(key)),
             )
         )
     return "<thead>{}</thead>".format("".join(cells))
 
 
-def format_row(alert: dict, keys: list, cwe_dict: dict[str, str]|None=None) -> str:
+def format_row(alert: dict, keys: list, cwe_dict: dict[str, str] | None = None, noprint_keys: list[str]|None = None) -> str:
     """Format a single row of the table."""
     cells = []
     for key in keys:
         value = alert.get(key)
         if value is None:
-                value = "-"
-        cells.append("<td>{}</td>".format(format_value(key, value, alert, cwe_dict)))
+            value = "-"
+        cells.append(
+            "<td{}>{}</td>".format(
+                ' class="no-print"' if noprint_keys is not None and key in noprint_keys else "",
+                format_value(key, value, alert, cwe_dict),
+            )
+        )
     return "<tr>{}</tr>".format("".join(cells))
 
 
@@ -169,7 +177,9 @@ CVSS_MEDIUM = 4.0
 CVSS_LOW = 0.1
 
 
-def format_value(key: str, value: Any, data: dict[str, Any], cwe_dict: dict[str, str]|None=None) -> str:
+def format_value(
+    key: str, value: Any, data: dict[str, Any], cwe_dict: dict[str, str] | None = None
+) -> str:
     """Format a value for a cell in the table, depending on the key."""
     if value == "-":
         return str(value)
@@ -177,7 +187,13 @@ def format_value(key: str, value: Any, data: dict[str, Any], cwe_dict: dict[str,
     if key == "cwe":
         cwe_value = str(value).lstrip("0")
         return '<a href="https://cwe.mitre.org/data/definitions/{}.html" title="{}">{}</a>'.format(
-            escape(cwe_value, quote=True), escape(cwe_dict.get(cwe_value, cwe_value), quote=True) if cwe_dict is not None else escape(cwe_value, quote=True), escape(cwe_value)
+            escape(cwe_value, quote=True),
+            (
+                escape(cwe_dict.get(cwe_value, cwe_value), quote=True)
+                if cwe_dict is not None
+                else escape(cwe_value, quote=True)
+            ),
+            escape(cwe_value),
         )
     if key == "security-severity":
         try:
@@ -270,7 +286,7 @@ def format_value(key: str, value: Any, data: dict[str, Any], cwe_dict: dict[str,
         if value == "":
             return "-"
         # turn Markdown into HTML, inline under a details element
-        return '<details class="rule-help"><summary>+</summary>{}</details>'.format(
+        return '<details><summary>+</summary>{}</details>'.format(
             # markdown to HTML with a library
             markdown(value)
         )
@@ -287,41 +303,96 @@ def format_value(key: str, value: Any, data: dict[str, Any], cwe_dict: dict[str,
         return escape(str(value))
 
 
-def make_summary(alerts: list[dict], scope: str, cwe_counts: dict[str, int], cwe_dict: dict[str, str]|None) -> str:
+def make_summary(
+    alerts: list[dict],
+    scope: str,
+    cwe_counts: dict[str, int],
+    cwe_dict: dict[str, str] | None,
+) -> str:
     """Make an HTML summary of the alerts."""
     title = '<div><h1><i class="fa-brands fa-github" style="font-size: xxx-large" title="GitHub Advanced Security"></i> Code Scanning Report</h1></div>'
     generated_at = '<div style="font-size: small">Generated at {}Z</div>'.format(
         datetime.utcnow().isoformat(timespec="seconds")
     )
-    scope = '<div><strong>Scope</strong>: {}</div>'.format(escape(scope))
+    scope = "<div><strong>Scope</strong>: {}</div>".format(escape(scope))
 
-    summary = '<div><strong>Total</strong>: {} alerts</div>'.format(len(alerts))
+    summary = "<div><strong>Total</strong>: {} alerts</div>".format(len(alerts))
 
     severity = '<div style="width:33%; float:left; "><table class="table"><tr><td style="width:50%; background-color: #FFDDDD;">CRITICAL<br />{}</td><td style="width:50%; background-color: #FFEEDD;">HIGH<br />{}</td></tr><tr><td style="width:50%; background-color: #FFFFDD;">MEDIUM<br />{}</td><td style="width:50%; background-color: #DDDDDD;">LOW<br />{}</td></tr></table></div>'.format(
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_CRITICAL]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_HIGH and a["security-severity"] < CVSS_CRITICAL]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] >= CVSS_MEDIUM and a["security-severity"] < CVSS_HIGH]),
-        len([a for a in alerts if isinstance(a["security-severity"], float) and a["security-severity"] < CVSS_MEDIUM or a["security-severity"] is None])
+        len(
+            [
+                a
+                for a in alerts
+                if isinstance(a["security-severity"], float)
+                and a["security-severity"] >= CVSS_CRITICAL
+            ]
+        ),
+        len(
+            [
+                a
+                for a in alerts
+                if isinstance(a["security-severity"], float)
+                and a["security-severity"] >= CVSS_HIGH
+                and a["security-severity"] < CVSS_CRITICAL
+            ]
+        ),
+        len(
+            [
+                a
+                for a in alerts
+                if isinstance(a["security-severity"], float)
+                and a["security-severity"] >= CVSS_MEDIUM
+                and a["security-severity"] < CVSS_HIGH
+            ]
+        ),
+        len(
+            [
+                a
+                for a in alerts
+                if isinstance(a["security-severity"], float)
+                and a["security-severity"] < CVSS_MEDIUM
+                or a["security-severity"] is None
+            ]
+        ),
     )
 
-    cwe_summary = '<div style="width:33%; float:left; "><strong>Top 5 CWEs</strong>:<ol>'
- 
+    cwe_summary = (
+        '<div style="width:33%; float:left; "><strong>Top 5 CWEs</strong>:<ol>'
+    )
+
     for cwe, count in sorted(
         cwe_counts.items(), key=lambda item: item[1], reverse=True
     )[:5]:
         cwe_name = cwe_dict.get(cwe.lstrip("0"), cwe) if cwe_dict is not None else cwe
         if cwe == "other":
-            cwe_summary += '<li>Other: {}</li>'.format(count)
+            cwe_summary += "<li>Other: {}</li>".format(count)
         else:
-            cwe_summary += '<li title="{}">CWE-{} ({}): {}</li>'.format(cwe_name, cwe.lstrip("0"), cwe_name, count)
+            cwe_summary += '<li title="{}">CWE-{} ({}): {}</li>'.format(
+                cwe_name, cwe.lstrip("0"), cwe_name, count
+            )
     cwe_summary += "</ol></div>"
 
     cwe_canvas = '<div style="float: left;"><canvas id="myChart"></canvas></div>'
-    
-    return title + generated_at + scope + summary + severity + cwe_summary + cwe_canvas + '<div style="clear:both;"></div>'
+
+    return (
+        title
+        + generated_at
+        + scope
+        + summary
+        + severity
+        + cwe_summary
+        + cwe_canvas
+        + '<div style="clear:both;"></div>'
+    )
 
 
-def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str | None = None, cwe_dict: dict[str, str]|None=None) -> str:
+def html_output(
+    alerts: list[dict],
+    fields: list[str],
+    scope: str,
+    groupby: str | None = None,
+    cwe_dict: dict[str, str] | None = None,
+) -> str:
     """Generate a simple HTML representation of the alerts, in a table. Use HTML escaping."""
 
     cwe_counts: dict[str, int] = {}
@@ -331,14 +402,21 @@ def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str 
             cwe_counts[cwe] = cwe_counts.get(cwe, 0) + 1
 
     # just keep the top 5 CWEs
-    cwe_counts_top = {k: v for k, v in sorted(cwe_counts.items(), key=lambda item: item[1], reverse=True)[0:5]}
+    cwe_counts_top = {
+        k: v
+        for k, v in sorted(cwe_counts.items(), key=lambda item: item[1], reverse=True)[
+            0:5
+        ]
+    }
     cwe_counts_top["other"] = sum(cwe_counts.values()) - sum(cwe_counts_top.values())
 
     LOG.debug(cwe_counts_top)
 
     summary = make_summary(alerts, scope, cwe_counts_top, cwe_dict)
 
-    heading = format_headings(fields)
+    noprint_keys = ["rule_help", "url"]
+
+    heading = format_headings(fields, noprint_keys=noprint_keys)
 
     content: str = ""
 
@@ -367,7 +445,9 @@ def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str 
             group_table = '<table id="{}_alerts" class="table table-striped table-hover">\n{}\n{}</table>'.format(
                 escape(key, quote=True),
                 heading,
-                "\n".join([format_row(alert, fields, cwe_dict) for alert in group_alerts]),
+                "\n".join(
+                    [format_row(alert, fields, cwe_dict, noprint_keys=noprint_keys) for alert in group_alerts]
+                ),
             )
             tables[key] = group_table
 
@@ -376,8 +456,11 @@ def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str 
             "\n".join(
                 [
                     '<tr><td style="width:5%">{}: {}</td><td>{}</td></tr>'.format(
-                        format_value(groupby, key, {}, cwe_dict), len(groups[key]),
-                        '<details class="rule-help"><summary>+</summary>{}</details>'.format(tables[key]),
+                        format_value(groupby, key, {}, cwe_dict),
+                        len(groups[key]),
+                        '<details class="rule-help"><summary>+</summary>{}</details>'.format(
+                            tables[key]
+                        ),
                     )
                     for key in sorted(tables.keys())
                 ]
@@ -386,7 +469,8 @@ def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str 
 
     else:
         table = '<table id="alerts" class="table table-striped table-hover" data-page-length="-1">\n{}\n{}</table>'.format(
-            heading, "\n".join([format_row(alert, fields, cwe_dict) for alert in alerts])
+            heading,
+            "\n".join([format_row(alert, fields, cwe_dict, noprint_keys=noprint_keys) for alert in alerts]),
         )
 
         content = table
@@ -406,8 +490,12 @@ def html_output(alerts: list[dict], fields: list[str], scope: str, groupby: str 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3ZSTk7kajkaj4D292NLuduDCO1c/NT8Id+jE58KYLKT7hXnbtryGmMg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 """
 
-    cwe_labels: str = ",".join(["'{}'".format(cwe.lstrip("0")) for cwe in cwe_counts_top.keys()])
-    cwe_values: str = ",".join(["{}".format(count) for count in cwe_counts_top.values()])
+    cwe_labels: str = ",".join(
+        ["'{}'".format(cwe.lstrip("0")) for cwe in cwe_counts_top.keys()]
+    )
+    cwe_values: str = ",".join(
+        ["{}".format(count) for count in cwe_counts_top.values()]
+    )
 
     jquery_document_ready = """
 <script type="text/javascript">
@@ -444,13 +532,16 @@ $(document).ready(function() {{
             'rgb(153, 102, 255)',
             'rgb(255, 159, 64)'
             ],
-            hoverOffset: 4
+            hoverOffset: 4,
         }}]
     }};
 
     const config = {{
         type: 'doughnut',
         data: data,
+        options: {{
+            animation: false
+        }}
     }};
 
     const ctx = document.getElementById('myChart');
@@ -458,12 +549,14 @@ $(document).ready(function() {{
     new Chart(ctx, config);
 }} );
 </script>
-""".format(cwe_labels, cwe_values)
+""".format(
+        cwe_labels, cwe_values
+    )
 
     hide_print_style = """
 <style>
 @media print {
-  .dataTables_filter, .dataTables_length, .dataTables_paginate, .code-scanning-url, .rule-help {
+  .dataTables_filter, .dataTables_length, .dataTables_paginate, .code-scanning-url, .no-print {
     display: none;
   }
 }
@@ -535,14 +628,14 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         "--format",
         "-f",
         default="json",
-        choices=["json", "html"],
-        help="Output format"
+        choices=["json", "html", "pdf"],
+        help="Output format",
     )
     parser.add_argument(
         "--fields",
         "-F",
         required=False,
-        help="Comma-separated list of fields to include in the output"
+        help="Comma-separated list of fields to include in the output",
     )
     parser.add_argument(
         "--groupby",
@@ -563,9 +656,9 @@ def main() -> None:
     alerts = json.load(args.alerts)
     metadata = json.load(args.metadata)
     cwe_data = csv.reader(args.mitre_cwe_csv) if args.mitre_cwe_csv else None
-    
+
     cwe_dict: dict[str, str] = {}
-    
+
     if cwe_data is not None:
         for row in cwe_data:
             cwe_dict[row[0]] = row[1]
@@ -574,28 +667,47 @@ def main() -> None:
     enrich_alerts(alerts, metadata)
     fixup_alerts(alerts)
 
+    if args.format in ["html", "pdf"]:
+        fields = (
+            [
+                "created_at",
+                "url",
+                "repo",
+                "language",
+                # "ref",
+                "path",
+                "location",
+                "state",
+                # "rule_id",
+                # "tool_name",
+                "cwe",
+                "message",
+                "rule_severity",
+                "security-severity",
+                "precision",
+                "rule_help",
+            ]
+            if args.fields is None
+            else args.fields.split(",")
+        )
+
     if args.format == "json":
         print(json.dumps(alerts, indent=2))
     elif args.format == "html":
-        fields = [
-            "created_at",
-            "url",
-            "repo",
-            "language",
-            # "ref",
-            "path",
-            "location",
-            "state",
-            # "rule_id",
-            # "tool_name",
-            "cwe",
-            "message",
-            "rule_severity",
-            "security-severity",
-            "precision",
-            "rule_help",
-        ] if args.fields is None else args.fields.split(",")
         print(html_output(alerts, fields, args.scope, args.groupby, cwe_dict))
+    elif args.format == "pdf":
+        html_content = html_output(alerts, fields, args.scope, args.groupby, cwe_dict)
+        with open("report.html", "w") as out:
+            out.write(html_content)
+
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            path = Path("./report.html").absolute().as_uri()
+            page.goto(path)
+            page.pdf(path="report.pdf", scale=0.75, format="A4", print_background=True)
 
 
 if __name__ == "__main__":
