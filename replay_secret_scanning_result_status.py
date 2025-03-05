@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
-"""Replay secret scanning alert status for a GitHub repository, organization or Enterprise, based on a provided file of previous statuses."""
+"""Replay secret scanning alert status for a GitHub repository, organization or Enterprise, based on a provided file of previous statuses.
+
+This can be useful if a repository is deleted and recreated, and you want to restore the previous status of the alerts.
+
+This script reads a CSV file with a header from stdin, with the following columns: repo, secret, secret_type, state, resolution, resolution_comment, url
+"""
 
 import sys
 import argparse
