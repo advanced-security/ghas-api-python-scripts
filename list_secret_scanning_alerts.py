@@ -47,7 +47,7 @@ def make_result(
     return result
 
 
-def to_list(result: dict) -> list[str]:
+def to_list(result: dict) -> list[str|None]:
     return [
         result["created_at"],
         result["push_protection_bypassed_by"],
