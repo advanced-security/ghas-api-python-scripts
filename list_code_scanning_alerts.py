@@ -20,6 +20,12 @@ def make_result(
     alert: dict, scope: str, name: str
 ) -> dict:
     """Make an alert result from the raw data."""
+    cwes = [tag for tag in alert["rule"]["tags"] if tag.startswith("external/cwe/cwe-")]
+    if len(cwes) > 0:
+        cwe = int(cwes[0].split("/")[2].split("-")[1])
+    else:
+        cwe = 0
+
     result = {
         "created_at": alert["created_at"],
         "repo": alert["repository"]["full_name"] if scope != "repo" else name,
@@ -35,6 +41,7 @@ def make_result(
         "rule_description": alert["rule"]["description"],
         "rule_full_description": alert["rule"]["full_description"],
         "rule_security_severity_level": alert["rule"]["security_severity_level"] if "security_severity_level" in alert["rule"] else None,
+        "cwe": cwe,
         "rule_help": alert["rule"]["help"],
         "tool_name": alert["tool"]["name"],
         "commit_sha": alert["most_recent_instance"]["commit_sha"],
@@ -63,6 +70,7 @@ def to_list(result: dict) -> list[str|int]:
         result["dismissed_comment"],
         result["rule_id"],
         result["rule_severity"],
+        result["cwe"],
         result["rule_description"],
         result["rule_full_description"],
         result["rule_security_severity_level"],
@@ -100,6 +108,7 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
             "rule_description",
             "rule_full_description",
             "rule_security_severity_level",
+            "cwe",
             "rule_help",
             "tool_name",
             "commit_sha",
