@@ -74,7 +74,7 @@ options:
   --debug, -d           Enable debug logging
 ```
 
-### Replay code scanning alert statusß
+### Replay code scanning alert status
 
 ```text
 usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
