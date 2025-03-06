@@ -8,7 +8,7 @@ import re
 import logging
 import datetime
 import json
-from typing import Generator
+from typing import Generator, Iterable
 from collections import defaultdict
 from defusedcsv import csv  # type: ignore
 from githubapi import GitHub, parse_date
@@ -75,6 +75,33 @@ def change_state(hostname, result: dict, res: dict) -> None:
     )
 
     return
+
+
+def update_states(hostname: str, results: Iterable[dict], existing_results: dict) -> None:
+    """Update the state of matching alerts to match the existing results."""
+    for result in results:
+        repo = result["repo"]
+        path = result["path"]
+        start_line = result["start_line"]
+        start_column = result["start_column"]
+        end_line = result["end_line"]
+        end_column = result["end_column"]
+
+        start_loc = (start_line, start_column)
+        end_loc = (end_line, end_column)
+
+        LOG.debug(f"{repo}, {path}, {start_loc}, {end_loc}")
+
+        try:
+            res = existing_results[repo][path][start_loc][end_loc]
+            LOG.warning(f"Found existing alert: {res}")
+        except KeyError:
+            continue
+
+        if res["state"] != result["state"]:
+            LOG.warning(f"State mismatch: {res['state']} != {result['state']}")
+
+            change_state(hostname, result, res)
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -154,29 +181,7 @@ def main() -> None:
 
     results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since)
 
-    for result in results:
-        repo = result["repo"]
-        path = result["path"]
-        start_line = result["start_line"]
-        start_column = result["start_column"]
-        end_line = result["end_line"]
-        end_column = result["end_column"]
-
-        start_loc = (start_line, start_column)
-        end_loc = (end_line, end_column)
-
-        LOG.debug(f"{repo}, {path}, {start_loc}, {end_loc}")
-
-        try:
-            res = existing_results[repo][path][start_loc][end_loc]
-            LOG.warning(f"Found existing alert: {res}")
-        except KeyError:
-            continue
-
-        if res["state"] != result["state"]:
-            LOG.warning(f"State mismatch: {res['state']} != {result['state']}")
-
-            change_state(hostname, result, res)
+    update_states(hostname, results, existing_results)
 
 
 if __name__ == "__main__":
