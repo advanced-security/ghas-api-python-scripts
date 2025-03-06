@@ -1,14 +1,29 @@
-# GHAS API scripts
+# GitHub Advanced Security (GHAS) API scripts
+
+GitHub Advanced Security offers a range of rich REST APIs to access and manage alerts.
+
+This is a set of scripts that use these APIs to access and manage alerts. The scripts are written in Python and use a wrapper around the API requests to manage authentication, pagination and rate limiting.
+
+> [!WARNING]
+> These scripts are not supported by GitHub. They are provided as-is, and come with no support or commitments.
+> They are intended to be used as examples, and can be modified to suit your needs
 
 ## Requirements
 
 - Python 3.10 or higher
 - Install dependencies with `python3 -mpip install -r requirements.txt`
-- Put a GitHub token in your environment in `GITHUB_TOKEN`
+- Put a suitable GitHub token in your environment in `GITHUB_TOKEN`
+  - requires read access to GitHub Advanced Security alerts
+  - requires read access to the repository, organization or Enterprise you are querying
+  - Note that Secret Scanning alerts are only available to admins of the repository, organization or Enterprise, a security manager, or where explicitly enabled by the repository owner
 
 ## Usage
 
-The date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
+Generally, the date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
+
+Run each specific script according to the help for each script.
+
+### List secret scanning alerts
 
 ```text
 usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--bypassed] [--state {open,resolved}] [--no-include-secret] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
@@ -35,6 +50,8 @@ options:
   --debug, -d           Enable debug logging
 ```
 
+### List code scanning alerts
+
 ```text
 usage: list_code_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
 
@@ -56,6 +73,8 @@ options:
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
   --debug, -d           Enable debug logging
 ```
+
+### Replay code scanning alert statusß
 
 ```text
 usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
@@ -79,6 +98,8 @@ options:
   --debug, -d           Enable debug logging
 ```
 
+### Replay secret scanning alert status
+
 ```text
 usage: replay_secret_scanning_result_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
 
@@ -101,6 +122,8 @@ options:
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
   --debug, -d           Enable debug logging
 ```
+
+### Enrich code scanning alerts
 
 ```text
 usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
@@ -127,6 +150,8 @@ options:
   --groupby GROUPBY, -g GROUPBY
                         Field to group the alerts by
 ```
+
+### Resolve duplicate secret scanning alerts
 
 ```text
 usage: resolve_duplicate_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--hostname HOSTNAME] [--debug] [--add-matching-secret OLD_TYPE NEW_TYPE] name
