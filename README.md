@@ -125,8 +125,12 @@ options:
 
 ### Enrich code scanning alerts
 
+Using the PDF mode needs you to install `playwright`, which isn't in the general `requirements.txt`.
+
+You can use `python3 -mpip install playwright` to get it.
+
 ```text
-usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
+usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html,pdf}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
 
 Add CodeQL metadata to Code Scanning alerts and produce output. This must be the abbreviated version of the JSON output supported by the partner script `list_code_scanning_alerts.py`. The metadata can either be in the format provided by the `codeql resolve metadata` command, or in the format produced by the
 script `parse_ql` by the same author as this script.
