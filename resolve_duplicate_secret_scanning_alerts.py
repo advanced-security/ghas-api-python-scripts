@@ -188,8 +188,6 @@ def main() -> None:
     # index results by secret and type for easy lookup
     indexed_results = index_results_by_secret(results)
 
-    LOG.debug(indexed_results)
-
     resolve_duplicates(indexed_results, matching_secrets_lookup, hostname)
 
 
