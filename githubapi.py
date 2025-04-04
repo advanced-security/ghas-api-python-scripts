@@ -99,6 +99,7 @@ class GitHub:
         since: datetime.datetime | None = None,
         date_field: str = "created_at",
         paging: None | str = "cursor",
+        progress: bool = True,
     ) -> Generator[dict, None, None]:
         """Query the GitHub API."""
         LOG.debug(method)
@@ -118,7 +119,7 @@ class GitHub:
                 LOG.debug("".join(traceback.format_exception(e)))
         else:
             for result in self.paginate(
-                url, since, date_field=date_field, cursor=paging == "cursor"
+                url, since, date_field=date_field, cursor=paging == "cursor", progress=progress
             ):
                 yield result
 
@@ -290,6 +291,8 @@ class GitHub:
             pbar = tqdm(desc="GitHub API", unit=" requests")
             pbar.reset(total=None)
 
+        direction = ""
+
         while True:
             try:
                 try:
@@ -310,7 +313,8 @@ class GitHub:
                 if data is None or response is None:
                     break
 
-                pbar.update(1)
+                if progress:
+                    pbar.update(1)
 
                 LOG.debug(data)
 
@@ -337,16 +341,29 @@ class GitHub:
                 link_header = response.headers.get("Link")
                 if not link_header:
                     LOG.debug("No link header, stopping retrieval")
+                    LOG.debug(response.headers)
                     break
                 links = self.parse_link_header(link_header)
 
                 LOG.debug(links)
 
-                if "next" not in links:
-                    LOG.debug("No next link, stopping retrieval")
+                if direction == "":
+                    if "next" in links:
+                        direction = "next"
+                    elif "prev" in links:
+                        direction = "prev"
+                    else:
+                        LOG.debug("No next or prev link")
+                        break
+
+                if direction == "next" and "next" not in links:
+                    LOG.debug("No more results, stopping retrieval")
+                    break
+                elif direction == "prev" and "prev" not in links:
+                    LOG.debug("No more results, stopping retrieval")
                     break
 
-                url = links["next"]
+                url = links[direction]
 
             except KeyboardInterrupt:
                 LOG.warning("Interrupted by user, stopping with what we have")
@@ -363,6 +380,7 @@ class GitHub:
         state: str | None = None,
         since: datetime.datetime | None = None,
         scope: str = "org",
+        progress: bool = True,
     ) -> Generator[dict, None, None]:
         """List code scanning alerts for a GitHub repository, organization or Enterprise."""
         query = {"state": state} if state is not None else {}
@@ -374,6 +392,7 @@ class GitHub:
             since=since,
             date_field="created_at",
             paging="cursor",
+            progress=progress,
         )
 
         results = (
