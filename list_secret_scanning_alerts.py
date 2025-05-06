@@ -28,7 +28,7 @@ def make_result(
             else None
         ),
         "push_protection_bypassed_at": alert["push_protection_bypassed_at"],
-        "repo": alert["repository"]["full_name"] if scope != "repo" else name,
+        "repo": alert["repository"]["full_name"] if scope != "repo" and "repository" in alert else name,
         "url": alert["html_url"],
         "state": alert["state"],
         "resolution": alert["resolution"],
@@ -39,6 +39,19 @@ def make_result(
         "resolution_comment": alert["resolution_comment"],
         "validity": alert["validity"],
         "secret_type": alert["secret_type"],
+        "multi_repo": alert.get("multi_repo"),
+        "publicly_leaked": alert.get("publicly_leaked"),
+        "push_protection_bypass_request_reviewer": (
+            alert["push_protection_bypass_request_reviewer"]["login"]
+            if alert["push_protection_bypass_request_reviewer"] is not None
+            else None
+        ),
+        "push_protection_bypass_request_reviewer_comment": alert.get(
+            "push_protection_bypass_request_reviewer_comment"
+        ),
+        "push_protection_bypass_request_comment": alert.get(
+            "push_protection_bypass_request_comment"
+        )
     }
 
     if include_secret:
