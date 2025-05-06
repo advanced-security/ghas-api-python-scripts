@@ -11,8 +11,11 @@ This is a set of scripts that use these APIs to access and manage alerts. The sc
 ## Requirements
 
 - Python 3.10 or higher
-- Install dependencies with `python3 -mpip install -r requirements.txt`
-- Put a suitable GitHub token in your environment in `GITHUB_TOKEN`, for example with `GITHUB_TOKEN=$(gh auth token)` before the command
+- Install dependencies with `python3 -mpip install -r requirements.txt --user`
+  - Consider using a virtualenv, managed by `pyenv`
+  - On MacOS, add `--break-system-packages` to the end of the install command, if you are not using a virtualenv: `python3 -mpip install -r requirements.txt --user --break-system-packages`
+- Put a suitable GitHub token in your environment in `GITHUB_TOKEN`
+  - for example with `GITHUB_TOKEN=$(gh auth token)` before the command
   - requires read access to GitHub Advanced Security alerts
   - requires read access to the repository, organization or Enterprise you are querying
   - Note that Secret Scanning alerts are only available to admins of the repository, organization or Enterprise, a security manager, or where explicitly enabled by the repository owner
