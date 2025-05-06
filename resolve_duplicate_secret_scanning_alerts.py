@@ -28,9 +28,13 @@ def index_results_by_secret(results: Iterable[dict]) -> dict:
     indexed_results: dict = {}
 
     for result in results:
-        repo = result["repo"]
-        secret_type = result["secret_type"]
-        secret = result["secret"]
+        try:
+            repo = result["repo"]
+            secret_type = result["secret_type"]
+            secret = result["secret"]
+        except KeyError as e:
+            LOG.error(f"Missing key in result: {e}: {result}")
+            continue
 
         # parse out just the private_key_id for matching on google_cloud_service_account_credentials
         if secret_type == "google_cloud_service_account_credentials":
@@ -183,7 +187,10 @@ def main() -> None:
     matching_secrets_lookup = {k: v for k, v in matching_secrets}
 
     # find secret scanning alerts
-    results = list_secret_scanning_alerts(name, scope, hostname, state=state, since=since)
+    results = list_secret_scanning_alerts(name, scope, hostname, state=state, since=since, include_secret=True)
+    if not results:
+        LOG.info("No secret scanning alerts found")
+        return
 
     # index results by secret and type for easy lookup
     indexed_results = index_results_by_secret(results)
