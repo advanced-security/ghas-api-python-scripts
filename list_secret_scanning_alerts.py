@@ -43,7 +43,7 @@ def make_result(
         "publicly_leaked": alert.get("publicly_leaked"),
         "push_protection_bypass_request_reviewer": (
             alert["push_protection_bypass_request_reviewer"]["login"]
-            if alert["push_protection_bypass_request_reviewer"] is not None
+            if alert.get("push_protection_bypass_request_reviewer") is not None
             else None
         ),
         "push_protection_bypass_request_reviewer_comment": alert.get(
