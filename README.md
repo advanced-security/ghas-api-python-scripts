@@ -130,7 +130,7 @@ options:
 
 Using the PDF mode needs you to install `playwright`, which isn't in the general `requirements.txt`.
 
-You can use `python3 -mpip install playwright` to get it.
+You can use `python3 -mpip install playwright` to get it, then run `playwright install` to install the required browsers.
 
 ```text
 usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html,pdf}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
