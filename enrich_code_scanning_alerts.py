@@ -15,7 +15,7 @@ from html import escape
 import re
 from typing import Any
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 from mistletoe import markdown
 import humanize
@@ -312,7 +312,7 @@ def make_summary(
     """Make an HTML summary of the alerts."""
     title = '<div><h1><i class="fa-brands fa-github" style="font-size: xxx-large" title="GitHub Advanced Security"></i> Code Scanning Report</h1></div>'
     generated_at = '<div style="font-size: small">Generated at {}Z</div>'.format(
-        datetime.utcnow().isoformat(timespec="seconds")
+        datetime.now(timezone.utc).isoformat(timespec="seconds")
     )
     scope = "<div><strong>Scope</strong>: {}</div>".format(escape(scope))
 
