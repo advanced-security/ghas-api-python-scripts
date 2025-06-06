@@ -20,6 +20,7 @@ import time
 from mistletoe import markdown
 import humanize
 from defusedcsv import csv
+from dateutil.parser import isoparse
 
 
 LOG = logging.getLogger(__name__)
@@ -295,7 +296,7 @@ def format_value(
             escape(str(value), quote=True)
         )
     elif key == "created_at":
-        natural_date = humanize.naturaltime(datetime.fromisoformat(str(value)))
+        natural_date = humanize.naturaltime(isoparse(str(value)))
         return '<span style="display:none">{}</span><span title="{}">{}</span>'.format(
             escape(str(value)), escape(str(value)), escape(natural_date)
         )
