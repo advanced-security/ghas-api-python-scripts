@@ -26,6 +26,20 @@ ISO_DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ISO_NO_TZ_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
 VALID_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,39}$")
 
+GENERIC_SECRET_TYPES = ",".join(
+    [
+        "http_basic_authentication_header",
+        "http_bearer_authentication_header",
+        "mongodb_connection_string",
+        "mysql_connection_string",
+        "openssh_private_key",
+        "pgp_private_key",
+        "postgres_connection_string",
+        "rsa_private_key",
+        "password",     # Copilot powered secret detection
+    ]
+)
+
 
 class RateLimited(Exception):
     """Rate limited exception."""
@@ -54,7 +68,7 @@ class GitHub:
         self.hostname = hostname
 
     @classmethod
-    def check_name(self, name: str, scope: str) -> bool:
+    def check_name(cls, name: str, scope: str) -> bool:
         """Check the name is valid."""
         # check repo slug has <owner</<repo> format or org/Enterprise name is valid
         if scope == "repo":
@@ -112,7 +126,7 @@ class GitHub:
         if paging is None:
             try:
                 result = self._do(url, method, data=data)
-                yield result
+                yield result.json()
             except Exception as e:
                 LOG.error("Error: %s", e)
                 # show traceback without raising the exception
@@ -160,6 +174,8 @@ class GitHub:
             scope_path = f"/enterprises/{requests.utils.quote(name)}"  # type: ignore
 
         path = api_path + scope_path + endpoint
+
+        query_params = {}
 
         if paging is None:
             query_params = {}
@@ -314,7 +330,7 @@ class GitHub:
                     break
 
                 if progress:
-                    pbar.update(1)
+                    pbar.update(1)  # type: ignore
 
                 LOG.debug(data)
 
@@ -413,9 +429,14 @@ class GitHub:
         since: datetime.datetime | None = None,
         scope: str = "org",
         bypassed: bool = False,
+        generic: bool = False,
     ) -> Generator[dict, None, None]:
         """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
         query = {"state": state} if state is not None else {}
+
+        if generic:
+            query["secret_type"] = GENERIC_SECRET_TYPES
+
         alerts = self.query(
             scope,
             name,

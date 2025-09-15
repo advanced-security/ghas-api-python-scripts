@@ -129,6 +129,8 @@ PUNCTUATION_RE = re.compile(r"[._-]")
 
 def format_header(key: str) -> str:
     """Format the heading depending on its value."""
+    output = ""
+
     if key not in ["cwe", "language"]:
         output = PUNCTUATION_RE.sub(" ", key).title()
     elif key == "cwe":
@@ -667,6 +669,8 @@ def main() -> None:
     fix_all_metadata(metadata, args.metadata_format)
     enrich_alerts(alerts, metadata)
     fixup_alerts(alerts)
+
+    fields = []
 
     if args.format in ["html", "pdf"]:
         fields = (

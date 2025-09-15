@@ -4,7 +4,6 @@
 
 import sys
 import argparse
-import re
 import logging
 import datetime
 import json
@@ -17,47 +16,71 @@ LOG = logging.getLogger(__name__)
 
 
 def make_result(
-    alert: dict, scope: str, name: str, include_secret: bool = True
+   g: GitHub, alert: dict, scope: str, name: str, include_secret: bool = True, include_locations: bool = False, include_commit: bool = False
 ) -> dict:
-    """Make an alert result from the raw data."""
-    result = {
-        "created_at": alert["created_at"],
-        "push_protection_bypassed_by": (
-            alert["push_protection_bypassed_by"]["login"]
-            if alert["push_protection_bypassed_by"] is not None
-            else None
-        ),
-        "push_protection_bypassed_at": alert["push_protection_bypassed_at"],
-        "repo": alert["repository"]["full_name"] if scope != "repo" and "repository" in alert else name,
-        "url": alert["html_url"],
-        "state": alert["state"],
-        "resolution": alert["resolution"],
-        "resolved_at": alert["resolved_at"],
-        "resolved_by": (
-            alert["resolved_by"]["login"] if alert["resolved_by"] is not None else None
-        ),
-        "resolution_comment": alert["resolution_comment"],
-        "validity": alert["validity"],
-        "secret_type": alert["secret_type"],
-        "multi_repo": alert.get("multi_repo"),
-        "publicly_leaked": alert.get("publicly_leaked"),
-        "push_protection_bypass_request_reviewer": (
-            alert["push_protection_bypass_request_reviewer"]["login"]
-            if alert.get("push_protection_bypass_request_reviewer") is not None
-            else None
-        ),
-        "push_protection_bypass_request_reviewer_comment": alert.get(
-            "push_protection_bypass_request_reviewer_comment"
-        ),
-        "push_protection_bypass_request_comment": alert.get(
-            "push_protection_bypass_request_comment"
-        )
-    }
+    """Make a "flat" alert result from the raw alert data."""
+    try:
+        result = {
+            "created_at": alert["created_at"],
+            "push_protection_bypassed_by": (
+                alert["push_protection_bypassed_by"]["login"]
+                if alert["push_protection_bypassed_by"] is not None
+                else None
+            ),
+            "push_protection_bypassed_at": alert["push_protection_bypassed_at"],
+            "repo": alert["repository"]["full_name"] if scope != "repo" and "repository" in alert else name,
+            "url": alert["html_url"],
+            "state": alert["state"],
+            "resolution": alert["resolution"],
+            "resolved_at": alert["resolved_at"],
+            "resolved_by": (
+                alert["resolved_by"]["login"] if alert["resolved_by"] is not None else None
+            ),
+            "resolution_comment": alert["resolution_comment"],
+            "validity": alert["validity"],
+            "secret_type": alert["secret_type"],
+            "multi_repo": alert.get("multi_repo"),
+            "publicly_leaked": alert.get("publicly_leaked"),
+            "push_protection_bypass_request_reviewer": (
+                alert["push_protection_bypass_request_reviewer"]["login"]
+                if alert.get("push_protection_bypass_request_reviewer") is not None
+                else None
+            ),
+            "push_protection_bypass_request_reviewer_comment": alert.get(
+                "push_protection_bypass_request_reviewer_comment"
+            ),
+            "push_protection_bypass_request_comment": alert.get(
+                "push_protection_bypass_request_comment"
+            ),
+        }
 
-    if include_secret:
-        result["secret"] = alert["secret"]
+        first_location = alert.get("first_location_detected")
+        if first_location is not None:
+            result["first_location"] = f"{first_location['path']}:{first_location['start_line']}:{first_location['start_column']}@{first_location.get('commit_sha', '')}"
 
-    return result
+        if include_commit:
+            # use decorated alert info, if it's there
+            if alert.get("commit") is not None:
+                commit_info = alert["commit"]
+                result["first_commit_date"] = commit_info["committer"]["date"]
+                result["first_commit_author"] = f"{commit_info["author"]["name"]} <{commit_info["author"]["email"]}>"
+
+        if include_locations:
+            # use decorated alert info, if it's there
+            locations = alert.get("locations")
+            if locations:
+                result["locations"] = ";".join([f"{loc['details']['path']}:{loc['details']['start_line']}:{loc['details']['start_column']}@{loc['details']['commit_sha']}" for loc in locations if loc.get("type") == "commit"])
+
+        if include_secret:
+            result["secret"] = alert["secret"]
+
+        return result
+    except KeyboardInterrupt:
+        LOG.info("Stopped by user")
+        sys.exit(1)
+    except Exception as e:
+        LOG.error(f"Error processing alert: {e}")
+        return {}
 
 
 def to_list(result: dict) -> list[str|None]:
@@ -75,6 +98,10 @@ def to_list(result: dict) -> list[str|None]:
         result["validity"],
         result["secret_type"],
         (result["secret"] if "secret" in result else None),
+        (result["first_location"] if "first_location" in result else None),
+        result["first_commit_date"] if "first_commit_date" in result else None,
+        result["first_commit_author"] if "first_commit_author" in result else None,
+        result["locations"] if "locations" in result else None,
     ]
 
 
@@ -99,11 +126,53 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
             "validity",
             "secret_type",
             "secret",
+            "first_location",
+            "first_commit_date",
+            "first_commit_author",
+            "locations",
         ]
     )
 
     for result in results:
-        writer.writerow(to_list(result))
+        try:
+            writer.writerow(to_list(result))
+        except KeyboardInterrupt:
+            LOG.info("Stopped by user")
+            return
+
+def decorate_alerts(g: GitHub, alerts: Generator[dict[str, Any], None, None], include_locations: bool = False, include_commit: bool = False) -> Generator[dict, None, None]:
+    """Decorate alerts with additional information, for both the raw and make_result outputs.
+    
+    Resolve locations and commit information, if that was asked for.
+    """
+    for alert in alerts:
+        first_location: Any | None = alert.get("first_location_detected", None)
+
+        if include_locations:
+            if "has_more_locations" in alert and not alert["has_more_locations"]:
+                pass
+            else:
+                location_data = g._get(alert["locations_url"]).json()
+                if first_location is None and location_data[0]['type'] == 'commit':
+                    first_location = location_data[0]['details']
+                alert["locations"] = location_data
+
+        if first_location is not None and "first_location_detected" not in alert:
+            alert["first_location_detected"] = first_location
+
+        if include_commit:
+            if first_location is None:
+                # we *have* to get the location info, despite not having --include-locations set
+                location_data = g._get(alert["locations_url"]).json()
+                if location_data[0]['type'] == 'commit':
+                    first_location = location_data[0]['details']
+            if first_location is not None:
+                commit_url = first_location.get("commit_url")
+                if commit_url:
+                    commit_info = g._get(commit_url).json()
+                    alert["commit"] = commit_info
+
+        yield alert
 
 
 def list_secret_scanning_alerts(
@@ -113,18 +182,30 @@ def list_secret_scanning_alerts(
     state: str | None = None,
     since: datetime.datetime | None = None,
     include_secret: bool = False,
+    include_locations: bool = False,
+    include_commit: bool = False,
     bypassed: bool = False,
     raw: bool = False,
+    generic: bool = False,
 ) -> Generator[dict, None, None]:
+    """List secret scanning alerts for a repo/org/Enterprise using the GitHub API.
+    
+    Decorate the alerts with additional information, if requested.
+
+    Output either the raw alert data, or flattened results.
+    """
     g = GitHub(hostname=hostname)
     alerts = g.list_secret_scanning_alerts(
         name, state=state, since=since, scope=scope, bypassed=bypassed
     )
+
+    alerts = decorate_alerts(g, alerts, include_locations=include_locations, include_commit=include_commit)
+
     if raw:
         return alerts
     else:
         results = (
-            make_result(alert, scope, name, include_secret=include_secret)
+            make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
             for alert in alerts
         )
         return results
@@ -142,6 +223,12 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         choices=["ent", "org", "repo"],
         required=False,
         help="Scope of the query",
+    )
+    parser.add_argument(
+        "--generic",
+        "-g",
+        action="store_true",
+        help="Include generic secret types (not just high-confidence ones)",
     )
     parser.add_argument(
         "--bypassed",
@@ -162,6 +249,18 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         "-n",
         action="store_true",
         help="Do not include the secret in the output",
+    )
+    parser.add_argument(
+        "--include-locations",
+        "-l",
+        action="store_true",
+        help="Include locations in the output",
+    )
+    parser.add_argument(
+        "--include-commit",
+        "-c",
+        action="store_true",
+        help="Include commit date and committer in the output",
     )
     parser.add_argument(
         "--since",
@@ -211,7 +310,10 @@ def main() -> None:
     state = args.state
     hostname = args.hostname
     include_secret = not args.no_include_secret
+    include_locations = args.include_locations
+    include_commit = args.include_commit
     bypassed = args.bypassed
+    generic = args.generic
 
     if not GitHub.check_name(name, scope):
         raise ValueError("Invalid name: %s for %s", name, scope)
@@ -223,9 +325,14 @@ def main() -> None:
         state=state,
         since=since,
         include_secret=include_secret,
+        include_locations=include_locations,
+        include_commit=include_commit,
         bypassed=bypassed,
         raw=args.raw,
+        generic=generic,
     )
+
+    LOG.debug(results)
 
     if args.json:
         print(json.dumps(list(results), indent=2))
