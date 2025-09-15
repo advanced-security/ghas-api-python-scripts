@@ -4,7 +4,6 @@
 
 import sys
 import argparse
-import re
 import logging
 import datetime
 import json
