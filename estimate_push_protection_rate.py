@@ -60,7 +60,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
 
     cut_off_date = args.cut_off_date
-    cut_off_datetime = None
+    cut_off_datetime = now
 
     if cut_off_date is not None:
         try:
@@ -114,7 +114,8 @@ def main() -> None:
         ))
 
     blocking_timespan = now - earliest_date
-    rate = len(remaining_protected_secrets) / blocking_timespan.days if blocking_timespan.days > 0 else len(remaining_protected_secrets)
+    count_without_false_positives = len(remaining_protected_secrets) - false_positives
+    rate = count_without_false_positives / blocking_timespan.days if blocking_timespan.days > 0 else count_without_false_positives
 
     print(f"Estimated secrets blocked per day since {earliest_date.date()}: {rate:.2f}")
     print(f"                      ... per week ...            : {rate * 7:.2f}")
