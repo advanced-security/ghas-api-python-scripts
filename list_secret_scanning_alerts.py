@@ -10,6 +10,7 @@ import json
 from typing import Generator, Any
 from defusedcsv import csv  # type: ignore
 from githubapi import GitHub, parse_date
+from requests.exceptions import HTTPError
 
 
 LOG = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 def make_result(
    g: GitHub, alert: dict, scope: str, name: str, include_secret: bool = True, include_locations: bool = False, include_commit: bool = False
-) -> dict:
+) -> dict | None:
     """Make a "flat" alert result from the raw alert data."""
     try:
         result = {
@@ -56,7 +57,8 @@ def make_result(
 
         first_location = alert.get("first_location_detected")
         if first_location is not None:
-            result["first_location"] = f"{first_location['path']}:{first_location['start_line']}:{first_location['start_column']}@{first_location.get('commit_sha', '')}"
+            if 'path' in first_location and 'start_line' in first_location and 'start_column' in first_location:
+                result["first_location"] = f"{first_location['path']}:{first_location['start_line']}:{first_location['start_column']}@{first_location.get('commit_sha', '')}"
 
         if include_commit:
             # use decorated alert info, if it's there
@@ -77,7 +79,7 @@ def make_result(
         return result
     except KeyboardInterrupt:
         LOG.info("Stopped by user")
-        sys.exit(1)
+        return None
     except Exception as e:
         LOG.error(f"Error processing alert: {e}")
         return {}
@@ -140,39 +142,74 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
             LOG.info("Stopped by user")
             return
 
-def decorate_alerts(g: GitHub, alerts: Generator[dict[str, Any], None, None], include_locations: bool = False, include_commit: bool = False) -> Generator[dict, None, None]:
+def decorate_alerts(g: GitHub, alerts: Generator[dict[str, Any], None, None], include_locations: bool = False, include_commit: bool = False) -> Generator[dict[str, Any], None, None]:
     """Decorate alerts with additional information, for both the raw and make_result outputs.
     
     Resolve locations and commit information, if that was asked for.
     """
-    for alert in alerts:
-        first_location: Any | None = alert.get("first_location_detected", None)
+    try:
+        location_data = None
 
-        if include_locations:
-            if "has_more_locations" in alert and not alert["has_more_locations"]:
-                pass
-            else:
-                location_data = g._get(alert["locations_url"]).json()
-                if first_location is None and location_data[0]['type'] == 'commit':
-                    first_location = location_data[0]['details']
-                alert["locations"] = location_data
+        for alert in alerts:
+            first_location: Any | None = alert.get("first_location_detected", None)
 
-        if first_location is not None and "first_location_detected" not in alert:
-            alert["first_location_detected"] = first_location
+            if include_locations:
+                if "has_more_locations" in alert and not alert["has_more_locations"]:
+                    pass
+                else:
+                    result = None
+                    try:
+                        result = g._get(alert["locations_url"])
+                        location_data = result.json()
+                        if first_location is None and location_data and 'type' in location_data[0] and location_data[0]['type'] == 'commit' and 'details' in location_data[0]:
+                            first_location = location_data[0]['details']
+                        alert["locations"] = location_data
+                    except json.JSONDecodeError as e:
+                        LOG.error(f"Error decoding JSON from locations URL for alert location data: {e}")
+                        if result is not None:
+                            LOG.debug(result.text)
+                    except HTTPError as e:
+                        if e.response.status_code == 404:
+                            LOG.error("Locations URL not found for alert")
 
-        if include_commit:
-            if first_location is None:
-                # we *have* to get the location info, despite not having --include-locations set
-                location_data = g._get(alert["locations_url"]).json()
-                if location_data[0]['type'] == 'commit':
-                    first_location = location_data[0]['details']
-            if first_location is not None:
-                commit_url = first_location.get("commit_url")
-                if commit_url:
-                    commit_info = g._get(commit_url).json()
-                    alert["commit"] = commit_info
+            if first_location is not None and "first_location_detected" not in alert:
+                alert["first_location_detected"] = first_location
 
-        yield alert
+            if include_commit:
+                if first_location is None:
+                    # we *have* to get the location info, despite not having --include-locations set
+                    result = None
+                    try:
+                        result = g._get(alert["locations_url"])
+                        location_data = result.json()
+                        if location_data and 'type' in location_data[0] and location_data[0]['type'] == 'commit' and 'details' in location_data[0]:
+                            first_location = location_data[0]['details']
+                    except json.JSONDecodeError as e:
+                        LOG.error(f"Error decoding JSON from locations URL for alert location data: {e}")
+                        if result is not None:
+                            LOG.debug(result.text)
+                    except HTTPError as e:
+                        if e.response.status_code == 404:
+                            LOG.error("Locations URL not found for alert")
+                if first_location is not None:
+                    commit_url = first_location.get("commit_url")
+                    if commit_url:
+                        try:
+                            result = g._get(commit_url)
+                            commit_info = result.json()
+                            alert["commit"] = commit_info
+                        except json.JSONDecodeError as e:
+                            LOG.error(f"Error decoding JSON from commit URL: {e}")
+                            if result is not None:
+                                LOG.debug(result.text)
+                        except HTTPError as e:
+                            if e.response.status_code == 404:
+                                LOG.warning(f"No commit data found for alert, commit URL not found: {commit_url}")
+
+            yield alert
+    except KeyboardInterrupt:
+        LOG.error("Stopped by user")
+        return
 
 
 def list_secret_scanning_alerts(
@@ -187,16 +224,18 @@ def list_secret_scanning_alerts(
     bypassed: bool = False,
     raw: bool = False,
     generic: bool = False,
-) -> Generator[dict, None, None]:
+    verify: bool | str = True,
+    progress: bool = True,
+) -> Generator[dict[str, Any], None, None] | None:
     """List secret scanning alerts for a repo/org/Enterprise using the GitHub API.
     
     Decorate the alerts with additional information, if requested.
 
     Output either the raw alert data, or flattened results.
     """
-    g = GitHub(hostname=hostname)
+    g = GitHub(hostname=hostname, verify=verify)
     alerts = g.list_secret_scanning_alerts(
-        name, state=state, since=since, scope=scope, bypassed=bypassed
+        name, state=state, since=since, scope=scope, bypassed=bypassed, generic=generic, progress=progress
     )
 
     alerts = decorate_alerts(g, alerts, include_locations=include_locations, include_commit=include_commit)
@@ -204,11 +243,12 @@ def list_secret_scanning_alerts(
     if raw:
         return alerts
     else:
-        results = (
-            make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
-            for alert in alerts
-        )
-        return results
+        for alert in alerts:
+            result = make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
+            if result is not None:
+                yield result
+            else:
+                return
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -228,7 +268,7 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         "--generic",
         "-g",
         action="store_true",
-        help="Include generic secret types (not just high-confidence ones)",
+        help="Include generic secret types (not just vendor secret types/custom patterns, which is the default)",
     )
     parser.add_argument(
         "--bypassed",
@@ -276,7 +316,7 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         '--raw', '-r', action="store_true", help="Output the raw data from the GitHub API"
     )
     parser.add_argument(
-        "--quote-all", "-q", action="store_true", help="Quote all fields in CSV output"
+        "--quote-all", "-Q", action="store_true", help="Quote all fields in CSV output"
     )
     parser.add_argument(
         "--hostname",
@@ -284,6 +324,24 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         default="github.com",
         required=False,
         help="GitHub Enterprise hostname (defaults to github.com)",
+    )
+    parser.add_argument(
+        "--ca-cert-bundle",
+        "-C",
+        type=str,
+        required=False,
+        help="Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)"
+    )
+    parser.add_argument(
+        "--no-verify-tls",
+        action="store_true",
+        help="Do not verify TLS connection certificates (warning: insecure)"
+    )
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Suppress non-error log messages",
     )
     parser.add_argument(
         "--debug", "-d", action="store_true", help="Enable debug logging"
@@ -296,7 +354,7 @@ def main() -> None:
     add_args(parser)
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO if not args.quiet else logging.ERROR, format="%(asctime)s %(levelname)s %(message)s")
 
     since = parse_date(args.since)
 
@@ -314,6 +372,16 @@ def main() -> None:
     include_commit = args.include_commit
     bypassed = args.bypassed
     generic = args.generic
+    verify = True
+
+    if args.ca_cert_bundle:
+        verify = ca_cert_bundle
+
+    if args.no_verify_tls:
+        verify = False
+        LOG.warning("Disabling TLS. This is insecure and should not be used in production")
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     if not GitHub.check_name(name, scope):
         raise ValueError("Invalid name: %s for %s", name, scope)
@@ -324,12 +392,14 @@ def main() -> None:
         hostname,
         state=state,
         since=since,
+        progress=not args.quiet,
         include_secret=include_secret,
         include_locations=include_locations,
         include_commit=include_commit,
         bypassed=bypassed,
         raw=args.raw,
         generic=generic,
+        verify=verify
     )
 
     LOG.debug(results)

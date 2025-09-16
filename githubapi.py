@@ -50,12 +50,13 @@ class RateLimited(Exception):
 class GitHub:
     """A GitHub API client."""
 
-    def __init__(self, token: str | None = None, hostname="github.com") -> None:
+    def __init__(self, token: str | None = None, hostname="github.com", verify: bool | str = True) -> None:
         token = token if token is not None else os.getenv("GITHUB_TOKEN")
         if token is None:
             raise ValueError("GITHUB_TOKEN environment variable must be set")
 
         self.session = requests.Session()
+        self.session.verify = verify
         self.session.headers.update({"Authorization": f"Bearer {token}"})
         self.session.headers.update({"Accept": "application/vnd.github.v3+json"})
         self.session.headers.update({"X-GitHub-Api-Version": "2022-11-28"})
@@ -304,7 +305,7 @@ class GitHub:
             )
 
         if progress:
-            pbar = tqdm(desc="GitHub API", unit=" requests")
+            pbar = tqdm(desc="Paging with GitHub API", unit="page")
             pbar.reset(total=None)
 
         direction = ""
@@ -430,6 +431,7 @@ class GitHub:
         scope: str = "org",
         bypassed: bool = False,
         generic: bool = False,
+        progress: bool = True,
     ) -> Generator[dict, None, None]:
         """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
         query = {"state": state} if state is not None else {}
@@ -445,6 +447,7 @@ class GitHub:
             since=since,
             date_field="created_at",
             paging="cursor",
+            progress=progress,
         )
 
         results = (
