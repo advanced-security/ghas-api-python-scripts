@@ -76,7 +76,8 @@ This script retrieves code scanning alerts from GitHub repositories, organizatio
 
 ```text
 usage: list_code_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json]
-                                    [--raw] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                    [--raw] [--quote-all] [--hostname HOSTNAME] [--ca-cert-bundle CA_CERT_BUNDLE]
+                                    [--no-verify-tls] [--debug]
                                     name
 
 List code scanning alerts for a GitHub repository, organization or Enterprise.
@@ -97,6 +98,9 @@ options:
   --raw, -r             Output raw JSON data from the API
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   --debug, -d           Enable debug logging
 ```
 
@@ -106,7 +110,8 @@ This script replays or restores the status of code scanning alerts based on a pr
 
 ```text
 usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE]
-                                            [--json] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                            [--json] [--quote-all] [--hostname HOSTNAME]
+                                            [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--debug]
                                             name
 
 Replay code scanning alert status for a GitHub repository, organization or Enterprise, based on a provide file of
@@ -127,6 +132,9 @@ options:
   --json                Output in JSON format (otherwise CSV)
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   --debug, -d           Enable debug logging
 ```
 
@@ -136,7 +144,8 @@ This script replays or restores the status of secret scanning alerts based on a 
 
 ```text
 usage: replay_secret_scanning_result_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE]
-                                               [--json] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                               [--json] [--quote-all] [--hostname HOSTNAME]
+                                               [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--debug]
                                                name
 
 Replay secret scanning alert status for a GitHub repository, organization or Enterprise, based on a provided file of
@@ -159,6 +168,9 @@ options:
   --json                Output in JSON format (otherwise CSV)
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   --debug, -d           Enable debug logging
 ```
 
@@ -207,7 +219,8 @@ This script identifies and resolves duplicate secret scanning alerts that occur 
 
 ```text
 usage: resolve_duplicate_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}]
-                                                   [--since SINCE] [--hostname HOSTNAME] [--debug]
+                                                   [--since SINCE] [--hostname HOSTNAME]
+                                                   [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--debug]
                                                    [--add-matching-secret OLD_TYPE NEW_TYPE]
                                                    name
 
@@ -226,6 +239,9 @@ options:
                         Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
                         2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   --debug, -d           Enable debug logging
   --add-matching-secret OLD_TYPE NEW_TYPE, -a OLD_TYPE NEW_TYPE
                         Add a new pair of matched secret types
@@ -236,7 +252,8 @@ options:
 This script bulk-closes all open code scanning alerts for a specified repository. It's useful for cleanup operations, such as dismissing false positives or marking alerts as "won't fix" across an entire repository. The script supports dry-run mode to preview changes before applying them.
 
 ```text
-usage: close_code_scanning_alerts.py [-h] [--resolution {false positive,won't fix,used in tests}] [--dry-run] [-d]
+usage: close_code_scanning_alerts.py [-h] [--resolution {false positive,won't fix,used in tests}] [--dry-run]
+                                     [--hostname HOSTNAME] [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [-d]
                                      repo_name
 
 Close all open code scanning alerts for a repository.
@@ -249,6 +266,10 @@ options:
   --resolution {false positive,won't fix,used in tests}
                         The resolution of the alert.
   --dry-run             Print the alerts that would be closed, but don't actually close them.
+  --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   -d, --debug           Print debug messages to the console.
 ```
 

@@ -19,7 +19,9 @@ def mock_args():
             since="2024-10-08",
             hostname="github.com",
             debug=True,
-            add_matching_secret=[("old_type", "new_type")]
+            add_matching_secret=[("old_type", "new_type")],
+            ca_cert_bundle=None,
+            no_verify_tls=False
         )
         yield mock_parse_args
 

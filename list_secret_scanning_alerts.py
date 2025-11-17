@@ -375,7 +375,7 @@ def main() -> None:
     verify = True
 
     if args.ca_cert_bundle:
-        verify = ca_cert_bundle
+        verify = args.ca_cert_bundle
 
     if args.no_verify_tls:
         verify = False
