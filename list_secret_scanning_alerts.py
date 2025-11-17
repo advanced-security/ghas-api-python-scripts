@@ -194,6 +194,7 @@ def decorate_alerts(g: GitHub, alerts: Generator[dict[str, Any], None, None], in
                 if first_location is not None:
                     commit_url = first_location.get("commit_url")
                     if commit_url:
+                        result = None
                         try:
                             result = g._get(commit_url)
                             commit_info = result.json()

@@ -3,9 +3,9 @@ from unittest.mock import patch, MagicMock, call
 from resolve_duplicate_secret_scanning_alerts import main
 
 import argparse
-import logging
 
-
+# Uncomment for debugging tests:
+# import logging
 # logging.getLogger("resolve_duplicate_secret_scanning_alerts").setLevel(logging.DEBUG)
 
 

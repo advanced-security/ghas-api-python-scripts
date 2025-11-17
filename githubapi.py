@@ -11,8 +11,7 @@ import json
 import traceback
 import zoneinfo
 from urllib.parse import urlunparse, urlencode, urlparse, parse_qs
-from typing import Generator, Any
-from collections import namedtuple
+from typing import Generator
 from tqdm import tqdm  # type: ignore
 import requests  # type: ignore
 

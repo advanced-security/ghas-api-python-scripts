@@ -2,15 +2,10 @@
 
 """Resolve duplicate secret scanning alerts for a GitHub repository, organization or Enterprise."""
 
-import sys
 import argparse
-import re
 import logging
-import datetime
 import json
-from typing import Generator, List, Tuple, Iterable
-from collections import defaultdict
-from defusedcsv import csv  # type: ignore
+from typing import Iterable
 from githubapi import GitHub, parse_date
 from list_secret_scanning_alerts import list_secret_scanning_alerts
 

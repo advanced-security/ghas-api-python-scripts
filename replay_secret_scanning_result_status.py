@@ -9,12 +9,7 @@ This script reads a CSV file with a header from stdin, with the following column
 
 import sys
 import argparse
-import re
 import logging
-import datetime
-import json
-from typing import Generator
-from collections import defaultdict
 from defusedcsv import csv  # type: ignore
 from githubapi import GitHub, parse_date
 from list_secret_scanning_alerts import list_secret_scanning_alerts
@@ -169,6 +164,9 @@ def main() -> None:
     LOG.debug(existing_results)
 
     results = list_secret_scanning_alerts(name, scope, hostname, state=state, since=since, verify=verify)
+
+    if not results:
+        return
 
     for result in results:
         repo = result["repo"]

@@ -4,12 +4,8 @@
 
 import sys
 import argparse
-import re
 import logging
-import datetime
-import json
-from typing import Generator, Iterable
-from collections import defaultdict
+from typing import Iterable
 from defusedcsv import csv  # type: ignore
 from githubapi import GitHub, parse_date
 from list_code_scanning_alerts import list_code_scanning_alerts
