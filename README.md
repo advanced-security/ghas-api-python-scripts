@@ -28,8 +28,14 @@ Run each specific script according to the help for each script.
 
 ### List secret scanning alerts
 
+This script retrieves secret scanning alerts from GitHub repositories, organizations, or Enterprises and outputs them in CSV or JSON format. It supports filtering by state, date, and push protection bypass status. Use this to audit, analyze, or export secret scanning data for compliance or security purposes.
+
 ```text
-usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--bypassed] [--state {open,resolved}] [--no-include-secret] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--generic] [--bypassed] [--state {open,resolved}]
+                                      [--no-include-secret] [--include-locations] [--include-commit] [--since SINCE]
+                                      [--json] [--raw] [--quote-all] [--hostname HOSTNAME]
+                                      [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--quiet] [--debug]
+                                      name
 
 List secret scanning alerts for a GitHub repository, organization or Enterprise.
 
@@ -40,23 +46,38 @@ options:
   -h, --help            show this help message and exit
   --scope {ent,org,repo}
                         Scope of the query
+  --generic, -g         Include generic secret types (not just vendor secret types/custom patterns, which is the
+                        default)
   --bypassed, -b        Only show alerts where push protection was bypassed
   --state {open,resolved}, -s {open,resolved}
                         State of the alerts to query
   --no-include-secret, -n
                         Do not include the secret in the output
+  --include-locations, -l
+                        Include locations in the output
+  --include-commit, -c  Include commit date and committer in the output
   --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
-  --quote-all, -q       Quote all fields in CSV output
+  --raw, -r             Output the raw data from the GitHub API
+  --quote-all, -Q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
+  --quiet, -q           Suppress non-error log messages
   --debug, -d           Enable debug logging
 ```
 
 ### List code scanning alerts
 
+This script retrieves code scanning alerts from GitHub repositories, organizations, or Enterprises and outputs them in CSV or JSON format. It supports filtering by state and date. Use this to audit, track, or export code scanning findings for reporting and analysis.
+
 ```text
-usage: list_code_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+usage: list_code_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json]
+                                    [--raw] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                    name
 
 List code scanning alerts for a GitHub repository, organization or Enterprise.
 
@@ -70,8 +91,10 @@ options:
   --state {open,resolved}, -s {open,resolved}
                         State of the alerts to query
   --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
+  --raw, -r             Output raw JSON data from the API
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
   --debug, -d           Enable debug logging
@@ -79,10 +102,15 @@ options:
 
 ### Replay code scanning alert status
 
-```text
-usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+This script replays or restores the status of code scanning alerts based on a previously exported CSV file. It's useful when alerts need to be re-dismissed after a repository is recreated or when migrating alert states between environments. The script reads from stdin and matches alerts by location.
 
-Replay code scanning alert status for a GitHub repository, organization or Enterprise, based on a provide file of previous statuses.
+```text
+usage: replay_code_scanning_alert_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE]
+                                            [--json] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                            name
+
+Replay code scanning alert status for a GitHub repository, organization or Enterprise, based on a provide file of
+previous statuses.
 
 positional arguments:
   name                  Name of the repo/org/Enterprise to query
@@ -94,7 +122,8 @@ options:
   --state {open,resolved}, -s {open,resolved}
                         State of the alerts to query
   --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
@@ -103,11 +132,17 @@ options:
 
 ### Replay secret scanning alert status
 
-```text
-usage: replay_secret_scanning_result_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--json] [--quote-all] [--hostname HOSTNAME] [--debug] name
+This script replays or restores the status of secret scanning alerts based on a previously exported CSV file. It's particularly useful when a repository is deleted and recreated, allowing you to restore the previous resolution states of alerts. The script reads a CSV file from stdin with columns: repo, secret, secret_type, state, resolution, resolution_comment, url.
 
-Replay secret scanning alert status for a GitHub repository, organization or Enterprise, based on a provided file of previous statuses. This can be useful if a repository is deleted and recreated, and you want to restore
-the previous status of the alerts. This script reads a CSV file with a header from stdin, with the following columns: repo, secret, secret_type, state, resolution, resolution_comment, url
+```text
+usage: replay_secret_scanning_result_status.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE]
+                                               [--json] [--quote-all] [--hostname HOSTNAME] [--debug]
+                                               name
+
+Replay secret scanning alert status for a GitHub repository, organization or Enterprise, based on a provided file of
+previous statuses. This can be useful if a repository is deleted and recreated, and you want to restore the previous
+status of the alerts. This script reads a CSV file with a header from stdin, with the following columns: repo, secret,
+secret_type, state, resolution, resolution_comment, url
 
 positional arguments:
   name                  Name of the repo/org/Enterprise to query
@@ -119,7 +154,8 @@ options:
   --state {open,resolved}, -s {open,resolved}
                         State of the alerts to query
   --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
   --quote-all, -q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
@@ -128,15 +164,21 @@ options:
 
 ### Enrich code scanning alerts
 
+This script enriches code scanning alerts with additional CodeQL metadata, including query descriptions, MITRE CWE information, and other contextual details. It produces enhanced output in JSON, HTML, or PDF format, making it easier to generate comprehensive security reports. The alerts input must be in JSON format from `list_code_scanning_alerts.py`.
+
 Using the PDF mode needs you to install `playwright`, which isn't in the general `requirements.txt`.
 
 You can use `python3 -mpip install playwright` to get it, then run `playwright install` to install the required browsers.
 
 ```text
-usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}] [--debug] [--format {json,html,pdf}] [--fields FIELDS] [--groupby GROUPBY] alerts metadata scope
+usage: enrich_code_scanning_alerts.py [-h] [--mitre-cwe-csv MITRE_CWE_CSV] [--metadata-format {codeql,parse_ql}]
+                                      [--debug] [--format {json,html,pdf}] [--fields FIELDS] [--groupby GROUPBY]
+                                      alerts metadata scope
 
-Add CodeQL metadata to Code Scanning alerts and produce output. This must be the abbreviated version of the JSON output supported by the partner script `list_code_scanning_alerts.py`. The metadata can either be in the format provided by the `codeql resolve metadata` command, or in the format produced by the
-script `parse_ql` by the same author as this script.
+Add CodeQL metadata to Code Scanning alerts and produce output. This must be the abbreviated version of the JSON
+output supported by the partner script `list_code_scanning_alerts.py`. The metadata can either be in the format
+provided by the `codeql resolve metadata` command, or in the format produced by the script `parse_ql` by the same
+author as this script.
 
 positional arguments:
   alerts                JSON file containing the alerts to enrich
@@ -146,11 +188,12 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --mitre-cwe-csv MITRE_CWE_CSV
-                        CSV file containing MITRE CWE data for Software Development from https://cwe.mitre.org/data/csv/699.csv.zip
+                        CSV file containing MITRE CWE data for Software Development from
+                        https://cwe.mitre.org/data/csv/699.csv.zip
   --metadata-format {codeql,parse_ql}, -m {codeql,parse_ql}
                         Format of the metadata
   --debug, -d           Print debug information
-  --format {json,html}, -f {json,html}
+  --format {json,html,pdf}, -f {json,html,pdf}
                         Output format
   --fields FIELDS, -F FIELDS
                         Comma-separated list of fields to include in the output
@@ -160,8 +203,13 @@ options:
 
 ### Resolve duplicate secret scanning alerts
 
+This script identifies and resolves duplicate secret scanning alerts that occur when the same secret is detected by multiple patterns. For example, when a Google Cloud private key ID is detected both as a standalone secret and as part of service account credentials, this script can automatically resolve the duplicate. Use the `--add-matching-secret` option to add custom pairs of matching secret types.
+
 ```text
-usage: resolve_duplicate_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}] [--since SINCE] [--hostname HOSTNAME] [--debug] [--add-matching-secret OLD_TYPE NEW_TYPE] name
+usage: resolve_duplicate_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--state {open,resolved}]
+                                                   [--since SINCE] [--hostname HOSTNAME] [--debug]
+                                                   [--add-matching-secret OLD_TYPE NEW_TYPE]
+                                                   name
 
 Resolve duplicate secret scanning alerts for a GitHub repository, organization or Enterprise.
 
@@ -175,11 +223,52 @@ options:
   --state {open,resolved}, -s {open,resolved}
                         State of the alerts to query
   --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
   --debug, -d           Enable debug logging
   --add-matching-secret OLD_TYPE NEW_TYPE, -a OLD_TYPE NEW_TYPE
                         Add a new pair of matched secret types
+```
+
+### Close code scanning alerts
+
+This script bulk-closes all open code scanning alerts for a specified repository. It's useful for cleanup operations, such as dismissing false positives or marking alerts as "won't fix" across an entire repository. The script supports dry-run mode to preview changes before applying them.
+
+```text
+usage: close_code_scanning_alerts.py [-h] [--resolution {false positive,won't fix,used in tests}] [--dry-run] [-d]
+                                     repo_name
+
+Close all open code scanning alerts for a repository.
+
+positional arguments:
+  repo_name             The owner/repo of the repository to close alerts for.
+
+options:
+  -h, --help            show this help message and exit
+  --resolution {false positive,won't fix,used in tests}
+                        The resolution of the alert.
+  --dry-run             Print the alerts that would be closed, but don't actually close them.
+  -d, --debug           Print debug messages to the console.
+```
+
+### Estimate push protection rate
+
+This script estimates what percentage of previously detected secrets would have been caught by push protection if it had been enabled. It compares a list of historical secret detections against the current patterns that have push protection enabled, helping you understand the potential impact of enabling this feature.
+
+```text
+usage: estimate_push_protection_rate.py [-h] [--cut-off-date CUT_OFF_DATE] secrets_file patterns_file
+
+Estimate push protection rate for secrets
+
+positional arguments:
+  secrets_file          Path to the file containing the list of secrets
+  patterns_file         Path to the file containing the list of patterns with push protection
+
+options:
+  -h, --help            show this help message and exit
+  --cut-off-date CUT_OFF_DATE
+                        ISO date string to filter secrets detected after this date (e.g., 2023-01-01)
 ```
 
 ## License
