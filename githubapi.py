@@ -462,6 +462,39 @@ class GitHub:
 
         return results
 
+    def list_dependabot_alerts(
+        self,
+        name: str,
+        state: str | None = None,
+        since: datetime.datetime | None = None,
+        scope: str = "org",
+        progress: bool = True,
+    ) -> Generator[dict, None, None]:
+        """List Dependabot alerts for a GitHub repository, organization or Enterprise."""
+        query = {"state": state} if state is not None else {}
+
+        alerts = self.query(
+            scope,
+            name,
+            "/dependabot/alerts",
+            query,
+            since=since,
+            date_field="created_at",
+            paging="cursor",
+            progress=progress,
+        )
+
+        results = (
+            alert
+            for alert in alerts
+            if (
+                since is None
+                or datetime.datetime.fromisoformat(alert["created_at"]) >= since
+            )
+        )
+
+        return results
+
 
 def parse_date(date: str) -> datetime.datetime | None:
     """Parse a date string and return a datetime object.
