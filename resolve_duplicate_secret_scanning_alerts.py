@@ -51,9 +51,9 @@ def index_results_by_secret(results: Iterable[dict]) -> dict:
     return indexed_results
 
 
-def change_state(hostname, old_result: dict, new_result: dict) -> None:
+def change_state(hostname, old_result: dict, new_result: dict, verify: bool | str = True) -> None:
     """Change the state of the alert to match the existing result using the GitHub API to update the alert."""
-    g = GitHub(hostname=hostname)
+    g = GitHub(hostname=hostname, verify=verify)
 
     repo_name = new_result["repo"]
 
@@ -83,7 +83,7 @@ def change_state(hostname, old_result: dict, new_result: dict) -> None:
 
 
 def resolve_duplicates(
-    indexed_results: dict, matching_secrets_lookup: dict, hostname: str
+    indexed_results: dict, matching_secrets_lookup: dict, hostname: str, verify: bool | str = True
 ) -> None:
     """Resolve duplicates by matching on a new secret type and updating the state of the alert to match the existing result."""
     for repo, repo_results in indexed_results.items():
@@ -107,7 +107,7 @@ def resolve_duplicates(
                     LOG.info(f"State mismatch, updating state: {new_result['state']} != {old_result['state']}")
 
                     if old_result["state"] != "pattern_edited":
-                        change_state(hostname, old_result, new_result)
+                        change_state(hostname, old_result, new_result, verify=verify)
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -146,6 +146,18 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         help="GitHub Enterprise hostname (defaults to github.com)",
     )
     parser.add_argument(
+        "--ca-cert-bundle",
+        "-C",
+        type=str,
+        required=False,
+        help="Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)"
+    )
+    parser.add_argument(
+        "--no-verify-tls",
+        action="store_true",
+        help="Do not verify TLS connection certificates (warning: insecure)"
+    )
+    parser.add_argument(
         "--debug", "-d", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
@@ -174,6 +186,16 @@ def main() -> None:
     name = args.name
     state = args.state
     hostname = args.hostname
+    verify = True
+
+    if args.ca_cert_bundle:
+        verify = args.ca_cert_bundle
+
+    if args.no_verify_tls:
+        verify = False
+        LOG.warning("Disabling TLS verification. This is insecure and should not be used in production")
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     if not GitHub.check_name(args.name, scope):
         raise ValueError("Invalid name: %s for %s", args.name, scope)
@@ -187,7 +209,7 @@ def main() -> None:
     matching_secrets_lookup = {k: v for k, v in matching_secrets}
 
     # find secret scanning alerts
-    results = list_secret_scanning_alerts(name, scope, hostname, state=state, since=since, include_secret=True)
+    results = list_secret_scanning_alerts(name, scope, hostname, state=state, since=since, include_secret=True, verify=verify)
     if not results:
         LOG.info("No secret scanning alerts found")
         return
@@ -195,7 +217,7 @@ def main() -> None:
     # index results by secret and type for easy lookup
     indexed_results = index_results_by_secret(results)
 
-    resolve_duplicates(indexed_results, matching_secrets_lookup, hostname)
+    resolve_duplicates(indexed_results, matching_secrets_lookup, hostname, verify=verify)
 
 
 if __name__ == "__main__":

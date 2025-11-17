@@ -92,6 +92,25 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         help="Print the alerts that would be closed, but don't actually close them.",
     )
     parser.add_argument(
+        "--hostname",
+        type=str,
+        default="github.com",
+        required=False,
+        help="GitHub Enterprise hostname (defaults to github.com)",
+    )
+    parser.add_argument(
+        "--ca-cert-bundle",
+        "-C",
+        type=str,
+        required=False,
+        help="Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)"
+    )
+    parser.add_argument(
+        "--no-verify-tls",
+        action="store_true",
+        help="Do not verify TLS connection certificates (warning: insecure)"
+    )
+    parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
@@ -108,7 +127,18 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO if not args.debug else logging.DEBUG)
 
-    github = GitHub()
+    verify = True
+    if args.ca_cert_bundle:
+        verify = args.ca_cert_bundle
+
+    if args.no_verify_tls:
+        verify = False
+        LOG = logging.getLogger(__name__)
+        LOG.warning("Disabling TLS verification. This is insecure and should not be used in production")
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    github = GitHub(hostname=args.hostname, verify=verify)
 
     try:
         owner, repo = args.repo_name.split("/")

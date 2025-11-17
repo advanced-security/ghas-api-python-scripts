@@ -124,8 +124,8 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
         writer.writerow(to_list(result))
 
 
-def list_code_scanning_alerts(name: str, scope: str, hostname: str, state: str|None=None, since: datetime.datetime|None=None, raw: bool=False) -> Generator[dict, None, None]:
-    g = GitHub(hostname=hostname)
+def list_code_scanning_alerts(name: str, scope: str, hostname: str, state: str|None=None, since: datetime.datetime|None=None, raw: bool=False, verify: bool | str = True) -> Generator[dict, None, None]:
+    g = GitHub(hostname=hostname, verify=verify)
     alerts = g.list_code_scanning_alerts(name, state=state, since=since, scope=scope)
     if raw:
         return alerts
@@ -179,6 +179,18 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         help="GitHub Enterprise hostname (defaults to github.com)",
     )
     parser.add_argument(
+        "--ca-cert-bundle",
+        "-C",
+        type=str,
+        required=False,
+        help="Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)"
+    )
+    parser.add_argument(
+        "--no-verify-tls",
+        action="store_true",
+        help="Do not verify TLS connection certificates (warning: insecure)"
+    )
+    parser.add_argument(
         "--debug", "-d", action="store_true", help="Enable debug logging"
     )
 
@@ -202,11 +214,21 @@ def main() -> None:
     name = args.name
     state = args.state
     hostname = args.hostname
+    verify = True
+
+    if args.ca_cert_bundle:
+        verify = args.ca_cert_bundle
+
+    if args.no_verify_tls:
+        verify = False
+        LOG.warning("Disabling TLS verification. This is insecure and should not be used in production")
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     if not GitHub.check_name(name, scope):
         raise ValueError("Invalid name: %s for %s", name, scope)
 
-    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since, raw=args.raw)
+    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since, raw=args.raw, verify=verify)
 
     if args.json:
         print(json.dumps(list(results), indent=2))

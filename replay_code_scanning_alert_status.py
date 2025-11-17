@@ -50,9 +50,9 @@ def existing_results_by_location(reader: csv.DictReader) -> dict:
     return existing_results
 
 
-def change_state(hostname, result: dict, res: dict) -> None:
+def change_state(hostname, result: dict, res: dict, verify: bool | str = True) -> None:
     """Change the state of the alert to match the existing result using the GitHub API to update the alert."""
-    g = GitHub(hostname=hostname)
+    g = GitHub(hostname=hostname, verify=verify)
 
     repo_name = result["repo"]
 
@@ -77,7 +77,7 @@ def change_state(hostname, result: dict, res: dict) -> None:
     return
 
 
-def update_states(hostname: str, results: Iterable[dict], existing_results: dict) -> None:
+def update_states(hostname: str, results: Iterable[dict], existing_results: dict, verify: bool | str = True) -> None:
     """Update the state of matching alerts to match the existing results."""
     for result in results:
         repo = result["repo"]
@@ -101,7 +101,7 @@ def update_states(hostname: str, results: Iterable[dict], existing_results: dict
         if res["state"] != result["state"]:
             LOG.warning(f"State mismatch: {res['state']} != {result['state']}")
 
-            change_state(hostname, result, res)
+            change_state(hostname, result, res, verify=verify)
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
@@ -146,6 +146,18 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         help="GitHub Enterprise hostname (defaults to github.com)",
     )
     parser.add_argument(
+        "--ca-cert-bundle",
+        "-C",
+        type=str,
+        required=False,
+        help="Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)"
+    )
+    parser.add_argument(
+        "--no-verify-tls",
+        action="store_true",
+        help="Do not verify TLS connection certificates (warning: insecure)"
+    )
+    parser.add_argument(
         "--debug", "-d", action="store_true", help="Enable debug logging"
     )
 
@@ -166,6 +178,16 @@ def main() -> None:
     name = args.name
     state = args.state
     hostname = args.hostname
+    verify = True
+
+    if args.ca_cert_bundle:
+        verify = args.ca_cert_bundle
+
+    if args.no_verify_tls:
+        verify = False
+        LOG.warning("Disabling TLS verification. This is insecure and should not be used in production")
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     if not GitHub.check_name(args.name, scope):
         raise ValueError("Invalid name: %s for %s", args.name, scope)
@@ -179,9 +201,9 @@ def main() -> None:
 
     LOG.debug(existing_results)
 
-    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since)
+    results = list_code_scanning_alerts(name, scope, hostname, state=state, since=since, verify=verify)
 
-    update_states(hostname, results, existing_results)
+    update_states(hostname, results, existing_results, verify=verify)
 
 
 if __name__ == "__main__":
