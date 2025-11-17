@@ -104,6 +104,41 @@ options:
   --debug, -d           Enable debug logging
 ```
 
+### List Dependabot alerts
+
+This script retrieves Dependabot alerts from GitHub repositories, organizations, or Enterprises and outputs them in CSV or JSON format. It supports filtering by state and date. Use this to audit, track, or export Dependabot security vulnerability findings for dependency management and reporting.
+
+```text
+usage: list_dependabot_alerts.py [-h] [--scope {ent,org,repo}] [--state {auto_dismissed,dismissed,fixed,open}]
+                                 [--since SINCE] [--json] [--raw] [--quote-all] [--hostname HOSTNAME]
+                                 [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--quiet] [--debug]
+                                 name
+
+List Dependabot alerts for a GitHub repository, organization or Enterprise.
+
+positional arguments:
+  name                  Name of the repo/org/Enterprise to query
+
+options:
+  -h, --help            show this help message and exit
+  --scope {ent,org,repo}
+                        Scope of the query
+  --state {auto_dismissed,dismissed,fixed,open}, -s {auto_dismissed,dismissed,fixed,open}
+                        State of the alerts to query
+  --since SINCE, -S SINCE
+                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
+                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+  --json                Output in JSON format (otherwise CSV)
+  --raw, -r             Output raw JSON data from the API
+  --quote-all, -q       Quote all fields in CSV output
+  --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
+  --quiet               Suppress non-error log messages
+  --debug, -d           Enable debug logging
+```
+
 ### Replay code scanning alert status
 
 This script replays or restores the status of code scanning alerts based on a previously exported CSV file. It's useful when alerts need to be re-dismissed after a repository is recreated or when migrating alert states between environments. The script reads from stdin and matches alerts by location.
