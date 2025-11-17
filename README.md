@@ -7,19 +7,20 @@ This is a set of scripts that use these APIs to access and manage alerts. The sc
 > [!NOTE]
 > This is an unofficial tool created by Field Security Specialists, and is not officially supported by GitHub.
 
-## Requirements
+## 📦 Requirements
 
 - Python 3.10 or higher
 - Install dependencies with `python3 -mpip install -r requirements.txt --user`
   - Consider using a virtualenv, managed by `pyenv`
   - On MacOS, add `--break-system-packages` to the end of the install command, if you are not using a virtualenv: `python3 -mpip install -r requirements.txt --user --break-system-packages`
-- Put a suitable GitHub token in your environment in `GITHUB_TOKEN`
+  - to use PDF output in `enrich_code_scanning_alerts.py`, also install `playwright` with `python3 -mpip install playwright --user` and run `playwright install` to install the required browsers
+- Put a suitable GitHub access token in your environment in `GITHUB_TOKEN`
   - for example with `GITHUB_TOKEN=$(gh auth token)` before the command
   - requires read access to GitHub Advanced Security alerts
   - requires read access to the repository, organization or Enterprise you are querying
-  - Note that Secret Scanning alerts are only available to admins of the repository, organization or Enterprise, a security manager, or where explicitly enabled by the repository owner
+  - Note that Secret Scanning alerts are only available to admins of the repository, organization or Enterprise, a security manager, or where otherwise granted access
 
-## Usage
+## 🚀 Usage
 
 Generally, the date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
 
@@ -326,6 +327,25 @@ options:
                         ISO date string to filter secrets detected after this date (e.g., 2023-01-01)
 ```
 
-## License
+## 🤝 Contributing
 
-(C) Copyright 2024 GitHub, Inc. This is not open source software, and comes with no support or commitments.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🆘 Support
+
+> [!NOTE]
+> This is an _unofficial_ tool created by Field Security Specialists, and is not officially supported by GitHub.
+
+See [SUPPORT.md](SUPPORT.md) for support options.
+
+## 📜 Code of Conduct
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for our Code of Conduct.
+
+## 🛡️ Privacy
+
+See [PRIVACY.md](PRIVACY.md) for the privacy notice.
