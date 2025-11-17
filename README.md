@@ -4,9 +4,8 @@ GitHub Advanced Security offers a range of rich REST APIs to access and manage a
 
 This is a set of scripts that use these APIs to access and manage alerts. The scripts are written in Python and use a wrapper around the API requests to manage authentication, pagination and rate limiting.
 
-> [!WARNING]
-> These scripts are not supported by GitHub. They are provided as-is, and come with no support or commitments.
-> They are intended to be used as examples, and can be modified to suit your needs
+> [!NOTE]
+> This is an unofficial tool created by Field Security Specialists, and is not officially supported by GitHub.
 
 ## Requirements
 
