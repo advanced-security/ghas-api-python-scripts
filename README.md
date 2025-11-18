@@ -20,138 +20,9 @@ This is a set of scripts that use these APIs to access and manage alerts. The sc
   - requires read access to the repository, organization or Enterprise you are querying
   - Note that Secret Scanning alerts are only available to admins of the repository, organization or Enterprise, a security manager, or where otherwise granted access
 
-## 🔧 The `githubapi.py` Module
+## 🚀 Scripts usage
 
-The `githubapi.py` module is a lightweight GitHub API client that provides a wrapper around the GitHub REST API. It handles authentication, pagination, rate limiting, and provides convenient methods for accessing GitHub Advanced Security alerts. All scripts in this repository use this module as their foundation.
-
-### Key Features
-
-- **Authentication**: Automatically handles GitHub token authentication via the `GITHUB_TOKEN` environment variable or passed token
-- **Automatic Pagination**: Supports cursor-based pagination to retrieve all results across multiple pages
-- **Rate Limiting**: Automatically detects and handles GitHub API rate limits by waiting and retrying
-- **Flexible Scoping**: Query at repository, organization, or Enterprise level
-- **Date Filtering**: Filter results by date with support for ISO 8601 formats or relative dates (e.g., `7d` for 7 days ago)
-- **TLS Support**: Configurable TLS certificate verification, including support for custom CA bundles and self-signed certificates
-- **Error Handling**: Robust error handling with detailed logging
-
-### The `GitHub` Class
-
-The main class in the module is `GitHub`, which provides methods to interact with the GitHub API.
-
-#### Initialization
-
-```python
-from githubapi import GitHub
-
-# Initialize with token from environment variable
-gh = GitHub()
-
-# Or provide token explicitly
-gh = GitHub(token="ghp_your_token_here")
-
-# For GitHub Enterprise Server with custom hostname
-gh = GitHub(hostname="github.example.com")
-
-# With custom CA certificate bundle
-gh = GitHub(verify="/path/to/ca-bundle.pem")
-
-# Disable TLS verification (not recommended)
-gh = GitHub(verify=False)
-```
-
-#### Main Methods
-
-**`query(scope, name, endpoint, query=None, data=None, method="GET", since=None, date_field="created_at", paging="cursor", progress=True)`**
-
-The core method for querying the GitHub API with automatic pagination and rate limiting.
-
-- `scope`: One of `"repo"`, `"org"`, or `"ent"` (Enterprise)
-- `name`: Repository name (format: `owner/repo`), organization name, or Enterprise slug
-- `endpoint`: API endpoint path (e.g., `/secret-scanning/alerts`)
-- `query`: Optional dictionary of query parameters
-- `since`: Optional datetime to filter results by creation date
-- `date_field`: Field name used for date filtering (default: `"created_at"`)
-- `paging`: Pagination mode - `"cursor"`, `"page"`, or `None` for no pagination
-- `progress`: Whether to show a progress bar (default: `True`)
-
-**`list_code_scanning_alerts(name, state=None, since=None, scope="org", progress=True)`**
-
-List code scanning alerts with optional state and date filtering.
-
-**`list_secret_scanning_alerts(name, state=None, since=None, scope="org", bypassed=False, generic=False, progress=True)`**
-
-List secret scanning alerts with optional filtering by state, date, bypass status, and secret type.
-
-**`list_dependabot_alerts(name, state=None, since=None, scope="org", progress=True)`**
-
-List Dependabot alerts with optional state and date filtering.
-
-### Utility Functions
-
-**`parse_date(date_string)`**
-
-Parse a date string into a datetime object. Supports:
-- Relative dates: `"7d"` (7 days ago), `"30d"` (30 days ago)
-- ISO 8601 dates: `"2024-10-08"`, `"2024-10-08T12:00:00Z"`
-- Partial ISO dates (timezone automatically added if missing)
-
-```python
-from githubapi import parse_date
-
-# Relative date
-since = parse_date("7d")  # 7 days ago
-
-# Absolute date
-since = parse_date("2024-10-08")  # Specific date
-```
-
-### Usage Example
-
-Here's a complete example showing how to use `githubapi.py` in your own scripts:
-
-```python
-#!/usr/bin/env python3
-
-import os
-from githubapi import GitHub, parse_date
-
-# Initialize the GitHub client
-gh = GitHub(token=os.getenv("GITHUB_TOKEN"))
-
-# List secret scanning alerts for an organization from the last 30 days
-since = parse_date("30d")
-for alert in gh.list_secret_scanning_alerts(
-    name="my-org",
-    scope="org",
-    state="open",
-    since=since
-):
-    print(f"Alert: {alert['secret_type']} in {alert['repository']['full_name']}")
-
-# Query a custom endpoint with pagination
-for result in gh.query(
-    scope="org",
-    name="my-org",
-    endpoint="/repos",
-    paging="cursor"
-):
-    print(f"Repository: {result['name']}")
-```
-
-### Error Handling and Rate Limiting
-
-The module automatically handles:
-- **Rate Limits**: When approaching the API rate limit, the client automatically slows down requests and waits when the limit is reached
-- **Connection Errors**: Gracefully handles network issues and stops with available data
-- **HTTP Errors**: Raises appropriate exceptions for 4xx and 5xx status codes
-
-All operations include debug logging that can be enabled with `logging.basicConfig(level=logging.DEBUG)`.
-
-## 🚀 Usage
-
-Generally, the date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
-
-Run each specific script according to the help for each script.
+A note on common arguments: generally, the date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
 
 ### List secret scanning alerts
 
@@ -454,7 +325,148 @@ options:
                         ISO date string to filter secrets detected after this date (e.g., 2023-01-01)
 ```
 
-## 🛠️ Alternatives
+## 🔧 The `githubapi.py` Module
+
+The `githubapi.py` module is a lightweight GitHub API client that provides a wrapper around the GitHub REST API. It handles authentication, pagination, rate limiting, and provides convenient methods for accessing GitHub Advanced Security alerts. All scripts in this repository use this module as their foundation.
+
+### Key Features
+
+- **Authentication**: Automatically handles GitHub token authentication via the `GITHUB_TOKEN` environment variable or passed token
+- **Automatic Pagination**: Supports cursor-based pagination to retrieve all results across multiple pages
+- **Rate Limiting**: Automatically detects and handles GitHub API rate limits by waiting and retrying
+- **Flexible Scoping**: Query at repository, organization, or Enterprise level
+- **Date Filtering**: Filter results by date with support for ISO 8601 formats or relative dates (e.g., `7d` for 7 days ago)
+- **TLS Support**: Configurable TLS certificate verification, including support for custom CA bundles and self-signed certificates
+- **Error Handling**: Robust error handling with detailed logging
+
+### The `GitHub` Class
+
+The main class in the module is `GitHub`, which provides methods to interact with the GitHub API.
+
+#### Initialization
+
+```python
+from githubapi import GitHub
+
+# Initialize with token from environment variable
+gh = GitHub()
+
+# Or provide token explicitly
+gh = GitHub(token=some_variable)
+
+# For GitHub Enterprise Server with custom hostname
+gh = GitHub(hostname="github.example.com")
+
+# With custom CA certificate bundle
+gh = GitHub(verify="/path/to/ca-bundle.pem")
+
+# Disable TLS verification (not recommended)
+gh = GitHub(verify=False)
+```
+
+#### Main Methods
+
+**`query(scope, name, endpoint, query=None, data=None, method="GET", since=None, date_field="created_at", paging="cursor", progress=True)`**
+
+The core method for querying the GitHub API with automatic pagination and rate limiting.
+
+- `scope`: One of `"repo"`, `"org"`, or `"ent"` (Enterprise)
+- `name`: Repository name (format: `owner/repo`), organization name, or Enterprise slug
+- `endpoint`: API endpoint path (e.g., `/secret-scanning/alerts`)
+- `query`: Optional dictionary of query parameters
+- `since`: Optional datetime to filter results by creation date
+- `date_field`: Field name used for date filtering (default: `"created_at"`)
+- `paging`: Pagination mode - `"cursor"`, `"page"`, or `None` for no pagination
+- `progress`: Whether to show a progress bar (default: `True`)
+
+**`query_once(scope, name, endpoint, query=None, data=None, method="GET")`**
+
+Make a single API request without pagination.
+
+**`_get(url, headers=None, params=None)`**
+
+Make a GET request to the specified URL with optional headers and parameters, respecting rate limits automatically by raising a `RateLimited` exception when necessary.
+
+**`_do(url, headers=None, params=None, data=None, method="GET")`**
+
+Make an HTTP request with the specified method, handling rate limits and errors.
+
+**`list_code_scanning_alerts(name, state=None, since=None, scope="org", progress=True)`**
+
+List code scanning alerts with optional state and date filtering.
+
+**`list_secret_scanning_alerts(name, state=None, since=None, scope="org", bypassed=False, generic=False, progress=True)`**
+
+List secret scanning alerts with optional filtering by state, date, bypass status, and secret type.
+
+**`list_dependabot_alerts(name, state=None, since=None, scope="org", progress=True)`**
+
+List Dependabot alerts with optional state and date filtering.
+
+### Utility Functions
+
+**`parse_date(date_string)`**
+
+Parse a date string into a datetime object. Supports:
+
+- Relative dates: `"7d"` (7 days ago), `"30d"` (30 days ago)
+- ISO 8601 dates: `"2024-10-08"`, `"2024-10-08T12:00:00Z"`
+- Partial ISO dates (timezone automatically added if missing)
+
+```python
+from githubapi import parse_date
+
+# Relative date
+since = parse_date("7d")  # 7 days ago
+
+# Absolute date
+since = parse_date("2024-10-08")  # Specific date
+```
+
+### Usage Example
+
+Here's a complete example showing how to use `githubapi.py` in your own scripts:
+
+```python
+#!/usr/bin/env python3
+
+import os
+from githubapi import GitHub, parse_date
+
+# Initialize the GitHub client
+gh = GitHub(token=os.getenv("GITHUB_TOKEN"))
+
+# List secret scanning alerts for an organization from the last 30 days
+since = parse_date("30d")
+for alert in gh.list_secret_scanning_alerts(
+    name="my-org",
+    scope="org",
+    state="open",
+    since=since
+):
+    print(f"Alert: {alert['secret_type']} in {alert['repository']['full_name']}")
+
+# Query a custom endpoint with pagination
+for result in gh.query(
+    scope="org",
+    name="my-org",
+    endpoint="/repos",
+    paging="cursor"
+):
+    print(f"Repository: {result['name']}")
+```
+
+### Error Handling and Rate Limiting
+
+The module automatically handles:
+
+- **Rate Limits**: When approaching the API rate limit, the client automatically slows down requests and waits when the limit is reached
+- **Connection Errors**: Gracefully handles network issues and stops with available data
+- **HTTP Errors**: Raises appropriate exceptions for 4xx and 5xx status codes
+
+All operations include debug logging that can be enabled with `logging.basicConfig(level=logging.DEBUG)`.
+
+## 🛠️ Alternative tools
 
 There are several alternative tools and scripts available for managing GitHub Advanced Security alerts. Some popular options include:
 
