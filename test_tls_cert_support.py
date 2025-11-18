@@ -15,6 +15,7 @@ def test_github_verify_default():
             from githubapi import GitHub
             
             gh = GitHub()
+            gh = gh  # to avoid unused variable warning
             
             # Verify that session.verify is set to True by default
             assert mock_session.verify == True
@@ -30,6 +31,7 @@ def test_github_verify_false():
             from githubapi import GitHub
             
             gh = GitHub(verify=False)
+            gh = gh  # to avoid unused variable warning
             
             # Verify that session.verify is set to False
             assert mock_session.verify == False
@@ -46,6 +48,7 @@ def test_github_verify_cert_bundle():
             
             cert_path = "/path/to/cert.pem"
             gh = GitHub(verify=cert_path)
+            gh = gh  # to avoid unused variable warning
             
             # Verify that session.verify is set to the certificate path
             assert mock_session.verify == cert_path
@@ -57,6 +60,7 @@ def test_github_token_required():
         with pytest.raises(ValueError, match="GITHUB_TOKEN environment variable must be set"):
             from githubapi import GitHub
             gh = GitHub()
+            gh = gh  # to avoid unused variable warning
 
 
 def test_github_hostname_validation():
@@ -65,7 +69,7 @@ def test_github_hostname_validation():
         with pytest.raises(ValueError, match="Invalid server hostname"):
             from githubapi import GitHub
             gh = GitHub(hostname="invalid hostname with spaces")
-
+            gh = gh  # to avoid unused variable warning
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
