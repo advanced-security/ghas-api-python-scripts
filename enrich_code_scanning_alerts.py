@@ -16,7 +16,6 @@ import re
 from typing import Any
 from pathlib import Path
 from datetime import datetime, timezone
-import time
 from mistletoe import markdown
 import humanize
 from defusedcsv import csv
@@ -60,7 +59,7 @@ def fixup_rule_metadata_codeql(rule_metadata: dict) -> None:
             rule_metadata["security-severity"] = float(
                 rule_metadata["security-severity"]
             )
-        except:
+        except (FloatingPointError, ValueError):
             LOG.warning(
                 "Could not parse security-severity in rule %s as float: %s",
                 rule_metadata.get("id", "unknown ID"),
