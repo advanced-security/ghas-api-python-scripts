@@ -65,7 +65,7 @@ def make_result(
             if alert.get("commit") is not None:
                 commit_info = alert["commit"]
                 result["first_commit_date"] = commit_info["committer"]["date"]
-                result["first_commit_author"] = f"{commit_info["author"]["name"]} <{commit_info["author"]["email"]}>"
+                result["first_commit_author"] = f"{commit_info['author']['name']} <{commit_info['author']['email']}>"
 
         if include_locations:
             # use decorated alert info, if it's there
