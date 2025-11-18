@@ -327,6 +327,15 @@ options:
                         ISO date string to filter secrets detected after this date (e.g., 2023-01-01)
 ```
 
+## 🛠️ Alternatives
+
+There are several alternative tools and scripts available for managing GitHub Advanced Security alerts. Some popular options include:
+
+- [GHAS to CSV](https://github.com/advanced-security/ghas-to-csv): A tool for exporting GitHub Advanced Security alerts to CSV format.
+- [GHASToolkit for Python](https://github.com/GeekMasher/ghastoolkit): A collection of tools for working with GitHub Advanced Security, including alert management.
+- [GitHub CLI](https://cli.github.com/): A command-line tool for interacting with GitHub, including managing security alerts.
+- [GitHub REST API](https://docs.github.com/en/rest): Directly use the GitHub REST API to create custom scripts for managing alerts.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
