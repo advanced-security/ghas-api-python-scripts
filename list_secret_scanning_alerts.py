@@ -242,14 +242,16 @@ def list_secret_scanning_alerts(
     alerts = decorate_alerts(g, alerts, include_locations=include_locations, include_commit=include_commit)
 
     if raw:
-        return alerts
+        for alert in alerts:
+            yield alert
+        return None
     else:
         for alert in alerts:
             result = make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
             if result is not None:
                 yield result
             else:
-                return
+                return None
 
 
 def add_args(parser: argparse.ArgumentParser) -> None:
