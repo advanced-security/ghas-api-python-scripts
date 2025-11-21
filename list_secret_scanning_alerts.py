@@ -2,6 +2,7 @@
 
 """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
 
+import itertools
 import sys
 import argparse
 import logging
@@ -260,14 +261,14 @@ def list_secret_scanning_alerts(
         )
         alerts.append(specific_alerts)
 
-    alerts = decorate_alerts(g, alerts, include_locations=include_locations, include_commit=include_commit)
+    decorated_alerts = decorate_alerts(g, itertools.chain.from_iterable(alerts), include_locations=include_locations, include_commit=include_commit)
 
     if raw:
-        for alert in alerts:
+        for alert in decorated_alerts:
             yield alert
         return None
     else:
-        for alert in alerts:
+        for alert in decorated_alerts:
             result = make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
             if result is not None:
                 yield result
