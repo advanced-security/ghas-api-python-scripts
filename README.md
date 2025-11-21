@@ -29,9 +29,8 @@ A note on common arguments: generally, the date in `--since` can be specified as
 This script retrieves secret scanning alerts from GitHub repositories, organizations, or Enterprises and outputs them in CSV or JSON format. It supports filtering by state, date, and push protection bypass status. Use this to audit, analyze, or export secret scanning data for compliance or security purposes.
 
 ```text
-usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--generic] [--bypassed] [--state {open,resolved}]
-                                      [--no-include-secret] [--include-locations] [--include-commit] [--since SINCE]
-                                      [--json] [--raw] [--quote-all] [--hostname HOSTNAME]
+usage: list_secret_scanning_alerts.py [-h] [--scope {ent,org,repo}] [--no-generic] [--no-default] [--include-types INCLUDE_TYPES [INCLUDE_TYPES ...]] [--bypassed] [--state {open,resolved}]
+                                      [--no-include-secret] [--include-locations] [--include-commit] [--since SINCE] [--json] [--raw] [--quote-all] [--hostname HOSTNAME]
                                       [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--quiet] [--debug]
                                       name
 
@@ -44,24 +43,24 @@ options:
   -h, --help            show this help message and exit
   --scope {ent,org,repo}
                         Scope of the query
-  --generic, -g         Include generic secret types (not just vendor secret types/custom patterns, which is the
-                        default)
+  --no-generic          Exclude generic secret types from the output
+  --no-default          Exclude default secret types from the output
+  --include-types INCLUDE_TYPES [INCLUDE_TYPES ...]
+                        Include specific secret types in the output (adds to any generic/default secrets that are output, so use --no-generic and --no-default to exclude those if required)
   --bypassed, -b        Only show alerts where push protection was bypassed
-  --state {open,resolved}, -s {open,resolved}
+  --state, -s {open,resolved}
                         State of the alerts to query
   --no-include-secret, -n
                         Do not include the secret in the output
   --include-locations, -l
                         Include locations in the output
   --include-commit, -c  Include commit date and committer in the output
-  --since SINCE, -S SINCE
-                        Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or
-                        2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
+  --since, -S SINCE     Only show alerts created after this date/time - ISO 8601 format, e.g. 2024-10-08 or 2024-10-08T12:00; or Nd format, e.g. 7d for 7 days ago
   --json                Output in JSON format (otherwise CSV)
   --raw, -r             Output the raw data from the GitHub API
   --quote-all, -Q       Quote all fields in CSV output
   --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
-  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+  --ca-cert-bundle, -C CA_CERT_BUNDLE
                         Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
   --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
   --quiet, -q           Suppress non-error log messages
