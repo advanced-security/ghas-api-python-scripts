@@ -430,6 +430,7 @@ class GitHub:
         scope: str = "org",
         bypassed: bool = False,
         generic: bool = False,
+        secret_types: list[str] | None = None,
         progress: bool = True,
     ) -> Generator[dict, None, None]:
         """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
@@ -437,6 +438,9 @@ class GitHub:
 
         if generic:
             query["secret_type"] = GENERIC_SECRET_TYPES
+
+        if secret_types:
+            query["secret_type"] = ",".join(secret_types)
 
         alerts = self.query(
             scope,

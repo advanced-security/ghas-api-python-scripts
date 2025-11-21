@@ -2,12 +2,13 @@
 
 """List secret scanning alerts for a GitHub repository, organization or Enterprise."""
 
+import itertools
 import sys
 import argparse
 import logging
 import datetime
 import json
-from typing import Generator, Any
+from typing import Generator, Any, Iterable
 from defusedcsv import csv  # type: ignore
 from githubapi import GitHub, parse_date
 from requests.exceptions import HTTPError
@@ -142,7 +143,7 @@ def output_csv(results: list[dict], quote_all: bool) -> None:
             LOG.info("Stopped by user")
             return
 
-def decorate_alerts(g: GitHub, alerts: Generator[dict[str, Any], None, None], include_locations: bool = False, include_commit: bool = False) -> Generator[dict[str, Any], None, None]:
+def decorate_alerts(g: GitHub, alerts: Iterable[dict[str, Any]], include_locations: bool = False, include_commit: bool = False) -> Generator[dict[str, Any], None, None]:
     """Decorate alerts with additional information, for both the raw and make_result outputs.
     
     Resolve locations and commit information, if that was asked for.
@@ -225,6 +226,8 @@ def list_secret_scanning_alerts(
     bypassed: bool = False,
     raw: bool = False,
     generic: bool = False,
+    default: bool = False,
+    specific: list[str] | None = None,
     verify: bool | str = True,
     progress: bool = True,
 ) -> Generator[dict[str, Any], None, None] | None:
@@ -235,18 +238,37 @@ def list_secret_scanning_alerts(
     Output either the raw alert data, or flattened results.
     """
     g = GitHub(hostname=hostname, verify=verify)
-    alerts = g.list_secret_scanning_alerts(
-        name, state=state, since=since, scope=scope, bypassed=bypassed, generic=generic, progress=progress
-    )
 
-    alerts = decorate_alerts(g, alerts, include_locations=include_locations, include_commit=include_commit)
+    alerts = []
+
+    if default:
+        default_alerts = g.list_secret_scanning_alerts(
+            name, state=state, since=since, scope=scope, bypassed=bypassed, generic=False, progress=progress
+        )
+
+        alerts.append(default_alerts)
+
+    if generic:
+        generic_alerts = g.list_secret_scanning_alerts(
+            name, state=state, since=since, scope=scope, bypassed=bypassed, generic=True, progress=progress
+        )
+
+        alerts.append(generic_alerts)
+
+    if specific:
+        specific_alerts = g.list_secret_scanning_alerts(
+            name, state=state, since=since, scope=scope, bypassed=bypassed, secret_types=specific, progress=progress
+        )
+        alerts.append(specific_alerts)
+
+    decorated_alerts = decorate_alerts(g, itertools.chain.from_iterable(alerts), include_locations=include_locations, include_commit=include_commit)
 
     if raw:
-        for alert in alerts:
+        for alert in decorated_alerts:
             yield alert
         return None
     else:
-        for alert in alerts:
+        for alert in decorated_alerts:
             result = make_result(g, alert, scope, name, include_secret=include_secret, include_locations=include_locations, include_commit=include_commit)
             if result is not None:
                 yield result
@@ -268,10 +290,20 @@ def add_args(parser: argparse.ArgumentParser) -> None:
         help="Scope of the query",
     )
     parser.add_argument(
-        "--generic",
-        "-g",
+        "--no-generic",
         action="store_true",
-        help="Include generic secret types (not just vendor secret types/custom patterns, which is the default)",
+        help="Exclude generic secret types from the output",
+    )
+    parser.add_argument(
+        "--no-default",
+        action="store_true",
+        help="Exclude default secret types from the output",
+    )
+    parser.add_argument(
+        "--include-types",
+        type=str,
+        nargs="+",
+        help="Include specific secret types in the output (adds to any generic/default secrets that are output, so use --no-generic and --no-default to exclude those if required)",
     )
     parser.add_argument(
         "--bypassed",
@@ -374,7 +406,9 @@ def main() -> None:
     include_locations = args.include_locations
     include_commit = args.include_commit
     bypassed = args.bypassed
-    generic = args.generic
+    generic = not args.no_generic
+    default = not args.no_default
+    specific = args.include_types
     verify = True
 
     if args.ca_cert_bundle:
@@ -402,6 +436,8 @@ def main() -> None:
         bypassed=bypassed,
         raw=args.raw,
         generic=generic,
+        default=default,
+        specific=specific,
         verify=verify
     )
 
