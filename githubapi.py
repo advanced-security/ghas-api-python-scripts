@@ -27,6 +27,8 @@ VALID_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,39}$")
 
 GENERIC_SECRET_TYPES = ",".join(
     [
+        "ec_private_key",
+        "generic_private_key",
         "http_basic_authentication_header",
         "http_bearer_authentication_header",
         "mongodb_connection_string",
