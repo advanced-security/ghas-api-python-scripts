@@ -32,7 +32,7 @@ GENERIC_SECRET_TYPES = ",".join(
         "http_basic_authentication_header",
         "http_bearer_authentication_header",
         "mongodb_connection_string",
-        "mysql_connection_string",
+        "mysql_connection_url",
         "openssh_private_key",
         "pgp_private_key",
         "postgres_connection_string",
