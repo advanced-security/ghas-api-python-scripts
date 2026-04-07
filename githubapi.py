@@ -503,7 +503,7 @@ class GitHub:
     def list_org_repos(self, org: str) -> Generator[str, None, None]:
         """List all repository full names (owner/repo) in an organization."""
         url = self.construct_api_url("org", org, "/repos", {"type": "all"}, "cursor")
-        for repo in self.paginate(url, progress=False):
+        for repo in self.paginate(url, progress=False, cursor=True):
             yield repo["full_name"]
 
     def list_enterprise_orgs(self, enterprise: str) -> list[str]:
