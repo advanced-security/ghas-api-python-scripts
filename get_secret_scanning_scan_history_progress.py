@@ -226,9 +226,11 @@ def print_progress_summary(
 
         group = groups[(cat, scan_type)]
         total = len(group)
+        if total == 0:
+            continue
         completed_count = sum(1 for r in group if r.status == "completed")
         in_progress_count = sum(1 for r in group if r.status == "in_progress")
-        pct = min(round((completed_count / total) * 100), 100) if total > 0 else 0
+        pct = round((completed_count / total) * 100)
         missing_count = max(success_repos - total, 0)
 
         # Most recent completed timestamp
