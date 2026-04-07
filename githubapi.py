@@ -545,9 +545,11 @@ class GitHub:
         """Get secret scanning scan history for a single repository.
 
         Returns the raw JSON response from GET /repos/{owner}/{repo}/secret-scanning/scan-history.
+        Raises on HTTP errors so callers can handle them.
         """
-        result = self.query_once("repo", repo_nwo, "/secret-scanning/scan-history")
-        return result if result is not None else {}
+        url = self.construct_api_url("repo", repo_nwo, "/secret-scanning/scan-history", None, None)
+        response = self._get(url)
+        return response.json()
 
 
 def parse_date(date: str) -> datetime.datetime | None:
