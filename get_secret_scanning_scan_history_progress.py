@@ -164,9 +164,17 @@ def query_all_repos(
         file=sys.stderr,
     )
 
+    def _worker(repo: str) -> RepoResult:
+        # Each thread gets its own GitHub client to avoid sharing
+        # the non-thread-safe requests.Session across threads.
+        thread_gh = GitHub(
+            hostname=g.hostname, verify=g.session.verify
+        )
+        return _fetch_scan_history(thread_gh, repo)
+
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = {
-            executor.submit(_fetch_scan_history, g, repo): repo for repo in repos
+            executor.submit(_worker, repo): repo for repo in repos
         }
         for future in as_completed(futures):
             result = future.result()
@@ -182,8 +190,9 @@ def _parse_completed_date(date_str: str | None) -> datetime | None:
     """Parse a completed_at date string, returning None on failure."""
     if not date_str or date_str == "-":
         return None
+    normalized = date_str[:-1] + "+00:00" if date_str.endswith("Z") else date_str
     try:
-        return datetime.fromisoformat(date_str)
+        return datetime.fromisoformat(normalized)
     except (ValueError, TypeError):
         return None
 
