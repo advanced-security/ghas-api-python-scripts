@@ -24,6 +24,49 @@ This is a set of scripts that use these APIs to access and manage alerts. The sc
 
 A note on common arguments: generally, the date in `--since` can be specified as `YYYY-MM-DD` or as `Nd` where `N` is the number of days ago. Full ISO formats are also supported. If a timezone is not specified, the date is assumed to be in UTC (`Z` timezone).
 
+### Get secret scanning scan history progress
+
+This script retrieves the secret scanning scan history for repositories across an Enterprise, organization, or single repo. It queries the `GET /repos/{owner}/{repo}/secret-scanning/scan-history` endpoint for each repo concurrently and displays a summary with progress bars showing backfill, incremental, pattern update, and custom pattern scan completion status. Optionally outputs a detailed markdown table.
+
+```text
+usage: get_secret_scanning_scan_history_progress.py [-h] (--enterprise ENTERPRISE | --org ORG | --repo REPO)
+                                                    [--detailed] [--concurrency CONCURRENCY] [--hostname HOSTNAME]
+                                                    [--ca-cert-bundle CA_CERT_BUNDLE] [--no-verify-tls] [--quiet]
+                                                    [--debug]
+
+options:
+  -h, --help            show this help message and exit
+  --enterprise ENTERPRISE
+                        GitHub Enterprise slug. Lists all orgs, then all repos per org.
+  --org ORG             GitHub Organization name. Lists all repos in the org.
+  --repo REPO           A single repository in owner/repo format.
+  --detailed            Show full markdown table with per-repo scan details instead of summary progress bars.
+  --concurrency CONCURRENCY
+                        Number of concurrent API requests (default: 10).
+  --hostname HOSTNAME   GitHub Enterprise hostname (defaults to github.com)
+  --ca-cert-bundle CA_CERT_BUNDLE, -C CA_CERT_BUNDLE
+                        Path to CA certificate bundle in PEM format (e.g. for self-signed server certificates)
+  --no-verify-tls       Do not verify TLS connection certificates (warning: insecure)
+  --quiet, -q           Suppress non-error log messages
+  --debug, -d           Enable debug logging
+```
+
+Examples:
+
+```bash
+# Single repo
+GITHUB_TOKEN=$(gh auth token) python3 get_secret_scanning_scan_history_progress.py --repo octocat/Hello-World
+
+# Organization
+GITHUB_TOKEN=$(gh auth token) python3 get_secret_scanning_scan_history_progress.py --org my-org
+
+# Enterprise (requires read:enterprise scope)
+GITHUB_TOKEN=$(gh auth token) python3 get_secret_scanning_scan_history_progress.py --enterprise my-enterprise
+
+# With detailed markdown table
+GITHUB_TOKEN=$(gh auth token) python3 get_secret_scanning_scan_history_progress.py --org my-org --detailed
+```
+
 ### List secret scanning alerts
 
 This script retrieves secret scanning alerts from GitHub repositories, organizations, or Enterprises and outputs them in CSV or JSON format. It supports filtering by state, date, and push protection bypass status. Use this to audit, analyze, or export secret scanning data for compliance or security purposes.
