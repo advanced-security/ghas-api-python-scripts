@@ -500,6 +500,55 @@ class GitHub:
 
         return results
 
+    def list_org_repos(self, org: str) -> Generator[str, None, None]:
+        """List all repository full names (owner/repo) in an organization."""
+        url = self.construct_api_url("org", org, "/repos", {"type": "all"}, "cursor")
+        for repo in self.paginate(url, progress=False):
+            yield repo["full_name"]
+
+    def list_enterprise_orgs(self, enterprise: str) -> list[str]:
+        """List all organization logins in an enterprise using GraphQL."""
+        base = "https://api.github.com" if self.hostname == "github.com" else f"https://{self.hostname}/api"
+        graphql_url = f"{base}/graphql"
+        orgs: list[str] = []
+        cursor = None
+        while True:
+            gql_query = (
+                "query($slug: String!, $cursor: String) {"
+                "  enterprise(slug: $slug) {"
+                "    organizations(first: 100, after: $cursor) {"
+                "      pageInfo { hasNextPage endCursor }"
+                "      nodes { login }"
+                "    }"
+                "  }"
+                "}"
+            )
+            variables = {"slug": enterprise, "cursor": cursor}
+            response = self.session.post(
+                graphql_url,
+                json={"query": gql_query, "variables": variables},
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "errors" in data:
+                raise RuntimeError(f"GraphQL errors: {data['errors']}")
+            org_data = data["data"]["enterprise"]["organizations"]
+            for node in org_data["nodes"]:
+                if node and node.get("login"):
+                    orgs.append(node["login"])
+            if not org_data["pageInfo"]["hasNextPage"]:
+                break
+            cursor = org_data["pageInfo"]["endCursor"]
+        return orgs
+
+    def get_secret_scanning_scan_history(self, repo_nwo: str) -> dict:
+        """Get secret scanning scan history for a single repository.
+
+        Returns the raw JSON response from GET /repos/{owner}/{repo}/secret-scanning/scan-history.
+        """
+        result = self.query_once("repo", repo_nwo, "/secret-scanning/scan-history")
+        return result if result is not None else {}
+
 
 def parse_date(date: str) -> datetime.datetime | None:
     """Parse a date string and return a datetime object.
